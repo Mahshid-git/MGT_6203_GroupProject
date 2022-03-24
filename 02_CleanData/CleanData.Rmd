@@ -1,0 +1,39 @@
+---
+title: "CleanData"
+author: "MJ"
+date: "24/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Remove previous data from environment
+rm(list = ls())
+```
+
+```{r}
+library(arrow) # needed to read parquet file
+```
+
+
+## Read & View the Data
+```{r}
+# path to the project folder
+#setwd("C:/Users/mjafarpour/Downloads/MGT_6203_GroupProject/")
+file_path <- "../01_RawData/nfip_Houston_flood_policies.parquet"
+policy_df <- read_parquet(file_path, as_tibble = TRUE)
+head(policy_df)
+```
+
+## 
+```{}
+
+```
+
+```{r}
+
+```
+
