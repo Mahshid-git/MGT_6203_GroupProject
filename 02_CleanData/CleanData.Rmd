@@ -35,5 +35,9 @@ head(policy_df)
 
 ```{r}
 
-```
+policy_df$postfirmconstructionindicator=ifelse(policy_df$postfirmconstructionindicator=='Y',1,0)
+policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator=='Y',1,0)
+policy_df$elevatedbuildingindicator=ifelse(policy_df$elevatedbuildingindicator=='Y',1,0)
+policy_df$construction=ifelse(policy_df$construction=='Y',1,0)
+
 
