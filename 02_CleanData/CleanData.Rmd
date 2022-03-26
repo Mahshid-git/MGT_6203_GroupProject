@@ -52,6 +52,6 @@ policy_df$upperandlowerfloors=ifelse(policy_df$locationofcontents=='Lowest floor
 policy_df$basement=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
 
 #dropping the following columns as being empty or not relevent/required. feel free to comment if not the right thing to do
-policy_df=subset(policy_df,select=c(agriculturestructureindicator,houseofworshipindicator,nonprofitindicator,regularemergencyprogramindicator,smallbusinessindicatorbuilding,hfiaasurcharge))
+policy_df=subset(policy_df,select=-c(agriculturestructureindicator,houseofworshipindicator,nonprofitindicator,regularemergencyprogramindicator,smallbusinessindicatorbuilding,hfiaasurcharge))
 
 
