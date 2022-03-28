@@ -46,10 +46,11 @@ policy_df$upperlevelcondo=ifelse(policy_df$condominiumindicator=='U',1,0)
 
 #trying to factor the locationofcontents column ....feel free to advise anyother column names. 
 policy_df$lowerflooronly=ifelse(policy_df$locationofcontents=='Lowest floor only above ground level (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
-
 policy_df$upperandlowerfloors=ifelse(policy_df$locationofcontents=='Lowest floor above ground level and higher floors (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
-
-policy_df$basement=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
+policy_df$basementandabove=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
+policy_df$basementonly=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace only',1,0)
+policy_df$morethan1floor=ifelse(policy_df$locationofcontents=='Above ground level more than one full floor',1,0)
+policy_df$mobilehomeortrailer=ifelse(policy_df$locationofcontents==' Manufactured (mobile) home or travel trailer on foundation',1,0)
 
 #dropping the following columns as being empty or not relevent/required. feel free to comment if not the right thing to do
 policy_df=subset(policy_df,select=-c(agriculturestructureindicator,houseofworshipindicator,nonprofitindicator,regularemergencyprogramindicator,smallbusinessindicatorbuilding,hfiaasurcharge))
