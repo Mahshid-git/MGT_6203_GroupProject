@@ -29,10 +29,31 @@ policy_df <- read_parquet(file_path, as_tibble = TRUE)
 head(policy_df)
 ```
 
-## 
-```{}
-
+## I filter the dataset again for Texas only 
+```{r}
+## Filter propertystate = 'TX"
+policy_df <- subset(policy_df, propertystate == 'TX' )
 ```
+
+
+```{r}
+policy_df = subset(policy_df,select=-c(agriculturestructureindicator, propertystate, reportedcity, houseofworshipindicator,nonprofitindicator,regularemergencyprogramindicator,smallbusinessindicatorbuilding,hfiaasurcharge))
+View(policy_df)
+```
+
+```{r}
+# count NA values in each column
+colSums(is.na(policy_df))
+```
+
+## Continue fiter some columns with large number of NA
+
+```{r}
+# Filter more columns with significant number of NA values
+policy_df = subset(policy_df,select=-c(basefloodelevation,cancellationdateoffloodpolicy, countycode, elevationcertificateindicator, lowestadjacentgrade, lowestfloorelevation, obstructiontype))                          
+View(policy_df)
+```
+
 
 ```{r}
 
