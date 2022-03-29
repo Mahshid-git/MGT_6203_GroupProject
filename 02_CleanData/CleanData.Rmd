@@ -105,18 +105,47 @@ policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator==
 
 ```{r}
 # Continue remove category variables
+
+df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
+View(df)
+
 ```
 
 
+
 ```{r}
-policy_df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
+## Type of data in all columns
+str(df)
+```
+```{r}
+# Convert all char to numeric (we have some errors with NA values, need to work further with NA values )
+
+#
+
+```
+
+```{r}
+# Convert all date from numeric to date format
+
+date_cols <- c("originalconstructiondate", "originalnbdate", "policyeffectivedate", "policyterminationdate")
+
+df1 <- df %>%
+   mutate_at(vars(all_of(date_cols)), funs(as.Date(., "%Y-%m-%d")))
+
+str(df1)
+```
+```{r}
+#identify all character columns
+df2 <- subset(df1, select = -c(floodzone))
+
+chars <- sapply(df2, is.character)
+
+#convert all character columns to numeric
+df2[ , chars] <- as.data.frame(apply(df2[ , chars], 2, as.numeric))
+str(df2)
 ```
 
 
-```{r}
-View(policy_df)
-```
 
 
-```{r}
 ```
