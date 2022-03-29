@@ -69,14 +69,13 @@ count_unique
 ## Some category variable neeed to clarify:
 ## condominiumindicator (6), construction (3), elevatedbuildingindicator(3), floodzone (33), locationofcontents (7), postfirmconstructionindicator (3), primaryresidenceindicator (3)
 ```{r}
-# condominiumindicator vảiable
+# condominiumindicator variables
 
 unique(policy_df$condominiumindicator)
 unique(policy_df$locationofcontents)
 
 ```
 ```{r}
-
 #condominum indicator for lower level and upper level condo
 policy_df$lowerlevelcondo=ifelse(policy_df$condominiumindicator=='L',1,0)
 policy_df$upperlevelcondo=ifelse(policy_df$condominiumindicator=='U',1,0)
@@ -101,3 +100,23 @@ policy_df$postfirmconstructionindicator=ifelse(policy_df$postfirmconstructionind
 
 #primaryresidenceindicator
 policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator=='Y',1,0)
+```
+
+
+```{r}
+# Continue remove category variables
+```
+
+
+```{r}
+policy_df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
+```
+
+
+```{r}
+View(policy_df)
+```
+
+
+```{r}
+```
