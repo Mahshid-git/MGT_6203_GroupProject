@@ -134,6 +134,10 @@ chars <- sapply(df2, is.character)
 df2[ , chars] <- as.data.frame(apply(df2[ , chars], 2, as.numeric))
 str(df2)
 ```
+```{r}
+cormat <- cor(df2)
+cormat
+```
 
 
 
