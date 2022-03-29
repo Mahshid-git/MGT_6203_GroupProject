@@ -174,4 +174,25 @@ dim(df_final)
 fit = lm(totalinsurancepremiumofthepolicy ~., df_final)
 summary(fit)
 ```
+## from the output, we can remove some insignificant variables 
+```{r}
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -latitude -longitude -originalnbdate -policytermindicator -reportedzipcode -lowerflooronly -basementonly -mobilehomeortrailer -upperlevelcondo, df_final)
+summary(fit1)
+```
+## Very good model with high accuracy
+
+```{r}
+## Variable selections using Lasso
+
+train_con <- trainControl(method = 'cv', number = 10) # using 10 folds cv
+
+lasso <- train(totalinsurancepremiumofthepolicy ~., df_final,
+               method = 'lasso',
+               preProc = c('scale', 'center'),
+               trControl = train_con,
+               na.action=na.exclude)
+lasso
+
+
+```
 
