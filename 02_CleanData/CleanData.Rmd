@@ -60,10 +60,14 @@ colSums(is.na(policy_df))
 ```
 ```{r}
 ## Observe unique value in each column
-count_unique <- rapply(policy_df, function(x) length(unique(x)))
+
+categorical_col <- policy_df[c("condominiumindicator", "construction", "elevatedbuildingindicator", "floodzone", "locationofcontents", "postfirmconstructionindicator", "primaryresidenceindicator")]
+
+count_unique <- rapply(categorical_col, function(x) length(unique(x)))
 count_unique
 ```
-
+## Some category variable neeed to clarify:
+## condominiumindicator (6), construction (3), elevatedbuildingindicator(3), floodzone (33), locationofcontents (7), postfirmconstructionindicator (3), primaryresidenceindicator (3)
 
 ```{r}
 
