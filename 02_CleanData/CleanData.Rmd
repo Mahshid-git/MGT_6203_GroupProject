@@ -16,6 +16,7 @@ rm(list = ls())
 
 ```{r}
 library(arrow) # needed to read parquet file
+library(dplyr)
 ```
 
 
