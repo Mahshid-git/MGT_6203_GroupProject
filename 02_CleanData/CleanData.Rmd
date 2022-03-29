@@ -54,6 +54,16 @@ policy_df = subset(policy_df,select=-c(basefloodelevation,cancellationdateoffloo
 View(policy_df)
 ```
 
+```{r}
+# Number of NA values in each column
+colSums(is.na(policy_df))
+```
+```{r}
+## Observe unique value in each column
+count_unique <- rapply(policy_df, function(x) length(unique(x)))
+count_unique
+```
+
 
 ```{r}
 
