@@ -19,7 +19,6 @@ library(arrow) # needed to read parquet file
 library(dplyr)
 ```
 
-
 ## Read & View the Data
 ```{r}
 # path to the project folder
@@ -108,22 +107,13 @@ policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator==
 
 df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
 View(df)
-
 ```
-
 
 
 ```{r}
 ## Type of data in all columns
 str(df)
 ```
-```{r}
-# Convert all char to numeric (we have some errors with NA values, need to work further with NA values )
-
-#
-
-```
-
 ```{r}
 # Convert all date from numeric to date format
 
