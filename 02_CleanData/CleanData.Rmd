@@ -140,7 +140,7 @@ str(df2)
 ```
 ```{r}
 # Select continuous variables for correlation examination
-
+# comment
 df_num <- subset(df2,select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,elevationdifference,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
 
 # Examine correlation between all numeric variables
