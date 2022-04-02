@@ -128,9 +128,22 @@ df1 <- df %>%
 
 str(df1)
 ```
+
+```{r}
+#floodzones
+# high risk if starts with A or V
+df1$floodzone_highrisk <- ifelse( (startsWith(df1$floodzone, 'A') | (startsWith(df1$floodzone, 'V'))),1,0)
+# moderate-to-low risk if starts with B, C or X
+df1$floodzone_modrisk <- ifelse( (startsWith(df1$floodzone, 'B') | (startsWith(df1$floodzone, 'C')) | (startsWith(df1$floodzone, 'X'))),1,0)
+# possible but undetermined flood hazards: starts with D
+df1$floodzone_undetermined <- ifelse( (startsWith(df1$floodzone, 'D')) ,1,0)
+```
+
+
 ```{r}
 #identify all character columns
 df2 <- subset(df1, select = -c(floodzone))
+# ratemethod should also be categorical; 1 - Manual 2 - Specific 3 - Alternative 4 - V-Zone Risk Factor Rating Form 5 - Underinsured Condominium Master Policy 6 - Provisional 7 - Preferred Risk Policy (PRPs issued for eligible properties located within a non-Special Flood Hazard Area [non-SFHA]) 8 - Tentative 9 - MPPP Policy 
 
 chars <- sapply(df2, is.character)
 
@@ -139,60 +152,8 @@ df2[ , chars] <- as.data.frame(apply(df2[ , chars], 2, as.numeric))
 str(df2)
 ```
 ```{r}
-# Select continuous variables for correlation examination
-# comment
-df_num <- subset(df2,select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,elevationdifference,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
-
-# Examine correlation between all numeric variables
-
-cormat <-cor(df_num, use = "pairwise.complete.obs")
-cormat
-```
-```{r}
-corrplot(cormat)
-```
-
-
-```{r}
-# Multicollinearity
-# Check the variables of highly correlated
-
-highly_corelated = findCorrelation(cormat, cutoff = 0.6)
-
-highlyCor_Col = colnames(df_num)[highly_corelated]
-highlyCor_Col
-
-```
-```{r}
-# Now, we remove highly correlated variables from original dataset and create final dataset
-
-df_final = df2[, -which(colnames(df2) %in% highlyCor_Col)]
-dim(df_final)
-
-```
-```{r}
-fit = lm(totalinsurancepremiumofthepolicy ~., df_final)
-summary(fit)
-```
-## from the output, we can remove some insignificant variables 
-```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -latitude -longitude -originalnbdate -policytermindicator -reportedzipcode -lowerflooronly -basementonly -mobilehomeortrailer -upperlevelcondo, df_final)
-summary(fit1)
-```
-## Very good model with high accuracy
-
-```{r}
-## Variable selections using Lasso
-
-train_con <- trainControl(method = 'cv', number = 10) # using 10 folds cv
-
-lasso <- train(totalinsurancepremiumofthepolicy ~., df_final,
-               method = 'lasso',
-               preProc = c('scale', 'center'),
-               trControl = train_con,
-               na.action=na.exclude)
-lasso
-
-
+# Exporting the dataframe to clean folder
+file_path2 <- "../02_CleanData/policy_clean.parquet"
+write_parquet(df2, file_path2)
 ```
 

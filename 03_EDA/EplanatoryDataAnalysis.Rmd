@@ -1,0 +1,105 @@
+---
+title: "Untitled"
+author: "MJ"
+date: "02/04/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Remove previous data from environment
+rm(list = ls())
+```
+
+```{r}
+library(arrow) # needed to read parquet file
+library(dplyr)
+library(car)
+library(caret)
+library(ggplot2)
+library(corrplot)
+```
+
+```{r}
+file_path <- "../02_CleanData/policy_clean.parquet"
+df <- read_parquet(file_path, as_tibble = TRUE)
+head(df)
+
+```
+
+```{r}
+str(df)
+```
+```{r}
+# Select continuous variables for correlation examination
+# comment
+df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,elevationdifference,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
+
+# Examine correlation between all numeric variables
+
+cormat <-cor(df_num, use = "pairwise.complete.obs")
+cormat
+```
+```{r}
+corrplot(cormat)
+```
+
+```{r}
+# Looking for Spearman correlation (checks nonlinear correlation too eg y=x3 ha Spearman correlation of 1)
+cormat_nonlin <- cor(df_num, use = "pairwise.complete.obs", method="spearman")
+cormat_nonlin
+```
+
+```{r}
+corrplot(cormat_nonlin)
+```
+
+
+
+
+```{r}
+# Multicollinearity
+# Check the variables of highly correlated
+
+highly_corelated = findCorrelation(cormat, cutoff = 0.6)
+
+highlyCor_Col = colnames(df_num)[highly_corelated]
+highlyCor_Col
+
+```
+```{r}
+# Now, we remove highly correlated variables from original dataset and create final dataset
+
+df_final = df2[, -which(colnames(df2) %in% highlyCor_Col)]
+dim(df_final)
+
+```
+```{r}
+fit = lm(totalinsurancepremiumofthepolicy ~., df_final)
+summary(fit)
+```
+## from the output, we can remove some insignificant variables 
+```{r}
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -latitude -longitude -originalnbdate -policytermindicator -reportedzipcode -lowerflooronly -basementonly -mobilehomeortrailer -upperlevelcondo, df_final)
+summary(fit1)
+```
+
+## Very good model with high accuracy
+
+```{r}
+## Variable selections using Lasso
+
+train_con <- trainControl(method = 'cv', number = 10) # using 10 folds cv
+
+lasso <- train(totalinsurancepremiumofthepolicy ~., df_final,
+               method = 'lasso',
+               preProc = c('scale', 'center'),
+               trControl = train_con,
+               na.action=na.exclude)
+lasso
+
+
+```
