@@ -178,7 +178,7 @@ write_parquet(df, file_path5)
 ```{r}
 file_path <- "../03_EDA/df.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
-View(df)
+#View(df)
 ```
 
 ```{r}
@@ -197,10 +197,13 @@ summary(fit)
 ```
 
 
-### Logistic regression for binary variables
+### Decision Tree
 
 ```{r}
 set.seed(99)
+
+df[is.na(df)] = 0 #replace NA with 0
+
 Train = createDataPartition(df$totalinsurancepremiumofthepolicy, p=0.75, list=FALSE)
 #split data in 75%-25% ratio
 
@@ -212,7 +215,7 @@ train_control <- trainControl(method="cv", number=10)
 #10 fold cv
 
 
-fit1= train(totalinsurancepremiumofthepolicy~., data=training, method="rpart",
+fit1= train(totalinsurancepremiumofthepolicy~., data=df, method="rpart",
             trControl=train_control)
 
 fit1
@@ -234,3 +237,23 @@ plot(varImp(fit1), top = 5)
 pred1 = predict(fit1, testing)
 
 confusionMatrix(pred1, testing$loan_status)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
