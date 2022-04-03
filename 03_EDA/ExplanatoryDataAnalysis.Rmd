@@ -142,10 +142,10 @@ lasso
 
 predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso$bestTune))
 
-#coefficents are reduced to zero--> these can be discraded
+# We can further discard variables with coefficients reduced to zero
 ```
 
-
+# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, so the totalinsurancepremiumofthepolicy will mainly depends on 7 variables as folows: totalinsurancepremiumofthepolicy ~ deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk 
 
 
 
