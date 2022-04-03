@@ -187,6 +187,11 @@ df <- read_parquet(file_path, as_tibble = TRUE)
 View(df)
 ```
 
+```{r}
+install_github("ujjwalkarn/xda")
+library(xda)
+Plot(df,'totalinsurancepremiumofthepolicy')
+```
 
 
 
