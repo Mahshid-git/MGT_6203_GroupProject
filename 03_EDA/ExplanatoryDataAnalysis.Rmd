@@ -94,7 +94,8 @@ summary(fit1)
 ## Create the final dataset for further analysis
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract,originalnbdate,policytermindicator,basementonly, upperlevelcondo,floodzone_modrisk,floodzone_undetermined))
+df_final <- subset(df_clean, select = -c(censustract,policytermindicator,mobilehomeortrailer, upperlevelcondo,floodzone_modrisk,floodzone_undetermined))
+
 View(df_final)
 ```
 
