@@ -9,22 +9,97 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+# Remove previous data from environment
+rm(list = ls())
 ```
 
-## Including Plots
+```{r}
+#install.packages('sjPlot')
+library(arrow) # needed to read parquet file
+library(plyr)
+library(dplyr)
+library(car)
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(rpart)
+library(ggplot2)
+library(corrplot)
+library(sjPlot)
+```
+# This part will involve all classification models
 
-You can also embed plots, for example:
+# I have run linear regression for all 3 datasets (final, num and df with only 7 variables as in Module 3_EDA). I found that after remove some variables as below, the model is very good so I will keep columns as in (df dataset)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+file_path <- "../03_EDA/df_final.parquet"
+df_final <- read_parquet(file_path, as_tibble = TRUE)
+
+# Exclude some insignificant variables for linear regression
+df <- subset(df_final, select = -c(latitude, longitude, originalnbdate, postfirmconstructionindicator, reportedzipcode, basementonly, policyeffectivedate, policyterminationdate, lowerflooronly, morethan1floor))
+
+# Export datafile for analysis
+file_path1 <- "../04_Modeling/df.parquet"
+write_parquet(df, file_path1)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Splitting data to 70% traning, 30% testing
+
+```{r}
+set.seed(100)
+
+size <- floor(0.7*nrow(df))
+train_ind <- sample(seq_len(nrow(df)), size = size)
+
+train <- df[train_ind, ]
+test <- df[-train_ind, ]
+```
+
+
+#1. Fiting Linear Regression
+
+```{r}
+
+lm_model = lm(totalinsurancepremiumofthepolicy ~., train)
+summary(lm_model)
+
+```
+```{r}
+plot_model(lm_model, vline.color = "red", sort.est = TRUE)
+```
+
+
+```{r}
+plot_model(lm_model, show.values = TRUE, value.offset = 0.4,sort.est = TRUE, title = "Estimates of Linear Regression")
+
+dev.copy(jpeg,filename="Linear_Estimates_Plot.jpg");
+dev.off ();
+```
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(lm_model)
+
+dev.copy(jpeg, filename="Linear_Residues_Plot.jpg");
+dev.off ()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
