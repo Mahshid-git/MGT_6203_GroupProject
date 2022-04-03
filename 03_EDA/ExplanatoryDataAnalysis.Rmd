@@ -17,7 +17,7 @@ rm(list = ls())
 ```
 
 ```{r}
-install.packages("rattle")
+
 library(arrow) # needed to read parquet file
 library(plyr)
 library(dplyr)
@@ -159,7 +159,7 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 
 # Exporting the dataframe to clean folder
 
-# df_final includes "date" columns
+# df_final includes numeric and "date" columns
 
 file_path3 <- "../03_EDA/df_final.parquet"
 write_parquet(df_final, file_path3)
@@ -176,114 +176,4 @@ file_path5 <- "../03_EDA/df.parquet"
 write_parquet(df, file_path5)
 
 ```
-
-## Move to the next section of modeling
-
-```{r}
-file_path <- "../03_EDA/df.parquet"
-df <- read_parquet(file_path, as_tibble = TRUE)
-#View(df)
-```
-
-```{r}
-corr_plot <-cor(df, use = "pairwise.complete.obs")
-
-corrplot(corr_plot, tl.col = "red", tl.srt = 45, bg = "White",
-         title = "\n\n Correlation Plot Of Gambling Data",
-         type = "lower")
-```
-
-# Part 1: Supervised classification model
-
-
-### Decision Tree
-
-```{r}
-set.seed(99)
-
-df[is.na(df)] = 0 #replace NA with 0
-
-```
-
-```{r}
-Train = createDataPartition(df$totalinsurancepremiumofthepolicy, p=0.75, list=FALSE)
-#split data in 75%-25% ratio
-
-training = df[ Train, ] #75% data for training 
-testing = df[ -Train, ] #25% testing
-
-```
-
-
-```{r}
-# define training control 10 fold cv
-train_control <- trainControl(method="cv", number=10)
-
-fit1= train(totalinsurancepremiumofthepolicy~., data=df, method="rpart", trControl = train_control)
-
-#fit1
-
-#summary(fit1)
-```
-
-
-```{r}
-
-fancyRpartPlot(fit1$finalModel)
-```
-
-
-
-```{r}
-#### which are the important variables
-
-varImp(fit1)
-
-summary(df)
-
-plot(varImp(fit1), top = 5)
-
-
-```
-
-
-
-```{r}
-########## predict on unseen data
-
-pred1 = predict(fit1, testing)
-
-confusionMatrix(pred1, testing$loan_status)
-```
-
-
-# Splitting data to 70% traning, 30% testing
-
-```{r}
-set.seed(100)
-size <- fllor(0.7*nrow(df_num))
-train_ind <- sample(seq_len(nrow(df_num)), size = size)
-
-train <- df_num[train_ind, ]
-test <- df_num[-train_ind, ]
-```
-
-
-#1. Fiting linear regression
-
-
-```{r}
-
-lm_model = lm(totalinsurancepremiumofthepolicy ~., train)
-summary(lm_model)
-
-```
-
-
-
-
-
-
-
-
 
