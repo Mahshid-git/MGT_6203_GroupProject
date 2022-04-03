@@ -139,7 +139,8 @@ lasso
 
 ```{r}
 # Get coef
-predict.enet(lasso$finalModel, type='coefficients', s=lasso$bestTune$fraction, mode='fraction')
+
+predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso$bestTune))
 
 #coefficents are reduced to zero--> these can be discraded
 ```
