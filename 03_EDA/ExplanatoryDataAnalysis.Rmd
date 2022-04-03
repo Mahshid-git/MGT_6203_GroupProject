@@ -87,7 +87,7 @@ summary(fit)
 ## from the output, we can remove some insignificant variables, but keep lattitude and reportedzipcode for mapping the areas where flood occurs
 
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -originalnbdate -policytermindicator -basementonly  -upperlevelcondo -floodzone_modrisk -floodzone_undetermined, df_clean)
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined, df_clean)
 summary(fit1)
 ```
 
