@@ -217,15 +217,10 @@ testing = df[ -Train, ] #25% testing
 
 
 ```{r}
-
-
-# define training control
+# define training control 10 fold cv
 train_control <- trainControl(method="cv", number=10)
-#10 fold cv
 
-
-fit1= train(totalinsurancepremiumofthepolicy~., data=df, method="rpart",
-            trControl=train_control)
+fit1= train(totalinsurancepremiumofthepolicy~., data=df, method="rpart", trControl = train_control)
 
 fit1
 
