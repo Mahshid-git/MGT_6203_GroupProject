@@ -85,8 +85,43 @@ dev.copy(jpeg, filename="Linear_Residues_Plot.jpg");
 dev.off ()
 ```
 
-```{r}
 
+
+```{r}
+# define training control
+train_control <- trainControl(method="cv", number=10)
+#10 fold cv
+
+
+
+fit1= train(totalinsurancepremiumofthepolicy~., data=train, method="rf",na.action = na.fail,
+            trControl=train_control,importance=TRUE)
+
+```
+
+```{r}
+#see the performance on the training data
+
+fit1
+
+plot(fit1)
+```
+
+
+```{r}
+######## evaluate variable importance
+varImp(fit1)
+
+plot(varImp(fit1), top = 5)
+```
+
+
+```{r}
+########## predict on unseen data
+
+pred1 = predict(fit1, testing)
+
+confusionMatrix(pred1, testing$loan_status)
 ```
 
 
