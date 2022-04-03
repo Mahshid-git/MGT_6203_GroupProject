@@ -103,17 +103,6 @@ View(df_final)
 str(df_final)
 ```
 
-```{r}
-# Exporting the dataframe to clean folder
-
-# df_final includes "date" columns
-#file_path3 <- "../03_EDA/df_final.parquet"
-#write_parquet(df_final, file_path3)
-
-# df_num includes only numeric variables for analysis
-#file_path4 <- "../03_EDA/df_num.parquet"
-#write_parquet(df_num, file_path4)
-```
 
 ```{r}
 # Select only numerical columns for data analysist (leave data type in df_final)
@@ -149,6 +138,20 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 
 
 
+```{r}
+
+# Exporting the dataframe to clean folder
+
+# df_final includes "date" columns
+
+file_path3 <- "../03_EDA/df_final.parquet"
+write_parquet(df_final, file_path3)
+
+# df_num includes only numeric variables for analysis
+file_path4 <- "../03_EDA/df_num.parquet"
+write_parquet(df_num, file_path4)
+
+```
 
 
 
