@@ -97,6 +97,22 @@ final_data<- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = l
 View(final_data)
 ```
 
+```{r}
+actuals_preds <- data.frame(final_data)
+
+# Min-Max Accuracy Calculation
+min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
+
+# => 64.00%, min_max accuracy
+
+# MAPE Calculation
+mape <- mean(abs((actuals_preds$Predicted - actuals_preds$Actual))/actuals_preds$Actual)  
+# => 82.7%, mean absolute percentage deviation
+
+mape
+```
+
+
 
 
 
