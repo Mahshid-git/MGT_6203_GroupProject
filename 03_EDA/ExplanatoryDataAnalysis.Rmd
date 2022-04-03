@@ -95,15 +95,23 @@ summary(fit1)
 
 ```{r}
 df_final <- subset(df_clean, select = -c(censustract,originalnbdate,policytermindicator,basementonly, upperlevelcondo,floodzone_modrisk,floodzone_undetermined))
+View(df_final)
 ```
 
 
 ```{r}
+str(df_final)
+
+# Select only numerical columns for data analysist
+df_num <- subset(df_final, select = -c(originalconstructiondate, policyeffectivedate, policyterminationdate))
+```
+
+```{r}
 ## Variable selections using Lasso
 
-train_con <- trainControl(method = 'cv', number = 10) # using 10 folds cv
+train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
 
-lasso <- train(totalinsurancepremiumofthepolicy ~., df_final,
+lasso <- train(totalinsurancepremiumofthepolicy ~., df_num,
                method = 'lasso',
                preProc = c('scale', 'center'),
                trControl = train_con,
