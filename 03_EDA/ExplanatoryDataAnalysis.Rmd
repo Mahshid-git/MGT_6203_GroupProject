@@ -103,11 +103,25 @@ View(df_final)
 str(df_final)
 ```
 
+```{r}
+# Exporting the dataframe to clean folder
+
+# df_final includes "date" columns
+#file_path3 <- "../03_EDA/df_final.parquet"
+#write_parquet(df_final, file_path3)
+
+# df_num includes only numeric variables for analysis
+#file_path4 <- "../03_EDA/df_num.parquet"
+#write_parquet(df_num, file_path4)
+```
 
 ```{r}
 # Select only numerical columns for data analysist (leave data type in df_final)
+# df_num inlcudes 25 variables
 
 df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate, policyeffectivedate, policyterminationdate))
+
+View(df_num)
 ```
 
 ```{r}
@@ -119,8 +133,24 @@ lasso <- train(totalinsurancepremiumofthepolicy ~., df_num,
                method = 'lasso',
                preProc = c('scale', 'center'),
                trControl = train_con,
-               na.action=na.exclude)
+              na.action=na.exclude)
 lasso
-
-
 ```
+
+```{r}
+# Get coef
+predict.enet(lasso$finalModel, type='coefficients', s=lasso$bestTune$fraction, mode='fraction')
+
+#coefficents are reduced to zero--> these can be discraded
+```
+
+
+
+
+
+
+
+
+
+
+
