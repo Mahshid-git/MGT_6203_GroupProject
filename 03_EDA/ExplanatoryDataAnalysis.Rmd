@@ -155,10 +155,10 @@ write_parquet(df_num, file_path4)
 
 df <- subset(df_num, select = c(deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk))
                                        
-file_path5 <- "../03_EDA/df_num.parquet"
+file_path5 <- "../03_EDA/df.parquet"
 write_parquet(df, file_path5)
 
-
+View(df)
 ```
 
 
