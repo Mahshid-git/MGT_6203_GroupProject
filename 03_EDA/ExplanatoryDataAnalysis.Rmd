@@ -40,14 +40,33 @@ str(df)
 # comment
 df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,elevationdifference,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
 
+```
+
+
+```{r}
 # Examine correlation between all numeric variables
 
-cormat <-cor(df_num, use = "pairwise.complete.obs")
-cormat
+png(height=1200, width=1200, pointsize=25, file="overlap.png")
+col1 <-rainbow(100, s = 1, v = 1, start = 0, end = 0.9, alpha = 1)
+
+test <- matrix(data=df_num,nrow=13,ncol=13)
+
+corrplot(test,tl.cex=3,title="Overlaps Between methods",
+method="circle",is.corr=FALSE,type="full",
+cl.lim=c(10,100),cl.cex=2,addgrid.col=
+"red",addshade="positive",col=col1, addCoef.col = rgb(0,0,0, alpha =
+0.6), mar=c(0,0,1,0), diag= FALSE) 
+dev.off()
+
 ```
 ```{r}
+cormat <-cor(df_num, use = "pairwise.complete.obs")
+
 corrplot(cormat)
 ```
+
+
+
 
 ```{r}
 # Looking for Spearman correlation (checks nonlinear correlation too eg y=x3 ha Spearman correlation of 1)
@@ -151,17 +170,23 @@ write_parquet(df_final, file_path3)
 file_path4 <- "../03_EDA/df_num.parquet"
 write_parquet(df_num, file_path4)
 
-# df includes only 7 variables as suggested by Lasso for analysis
+# df includes only 7 predicted variables and response as suggested by Lasso for analysis
 
-df <- subset(df_num, select = c(deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk))
+df <- subset(df_num, select = c(totalinsurancepremiumofthepolicy, deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk))
                                        
 file_path5 <- "../03_EDA/df.parquet"
 write_parquet(df, file_path5)
 
-View(df)
 ```
 
 ## Move to the next section of modeling
+
+```{r}
+file_path <- "../03_EDA/df.parquet"
+df <- read_parquet(file_path, as_tibble = TRUE)
+View(df)
+```
+
 
 
 
