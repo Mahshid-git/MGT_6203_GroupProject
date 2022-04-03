@@ -88,6 +88,7 @@ dev.off ()
 
 ```{r}
 lm_pred <- predict(lm_model, test, na.action = na.exclude)
+
 ```
 
 
@@ -101,11 +102,10 @@ actuals_preds <- data.frame(lm_data)
 
 # Min-Max Accuracy Calculation
 min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
-
+min_max_accuracy
 # => 64.00%, min_max accuracy
 
 ```
-
 
 ```{r}
 # find the error
@@ -115,8 +115,6 @@ View(actuals_preds1)
 
 rmse <- sqrt(mean((actuals_preds1$Error)^2))
 rmse
-
-
 ```
 
 
