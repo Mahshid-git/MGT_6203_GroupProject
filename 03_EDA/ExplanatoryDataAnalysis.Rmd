@@ -4,6 +4,8 @@ author: "MJ"
 date: "02/04/2022"
 output: html_document
 ---
+# This part mainly examines feature selection of the most relevant predictor variables. Different methods are used including remove multicollinearity, linear regression to remove insignificant variables, Lasso
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -57,7 +59,7 @@ cormat_nonlin
 corrplot(cormat_nonlin)
 ```
 
-
+## check Multicollinearity
 
 
 ```{r}
@@ -82,13 +84,19 @@ dim(df_clean)
 fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
 summary(fit)
 ```
-## from the output, we can remove some insignificant variables 
+## from the output, we can remove some insignificant variables, but keep lattitude and reportedzipcode for mapping the areas where flood occurs
+
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -latitude -longitude -originalnbdate -policytermindicator -reportedzipcode -lowerflooronly -basementonly -mobilehomeortrailer -upperlevelcondo, df_final)
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -originalnbdate -policytermindicator -basementonly  -upperlevelcondo -floodzone_modrisk -floodzone_undetermined, df_clean)
 summary(fit1)
 ```
 
-## Very good model with high accuracy
+## Create the final dataset for further analysis
+
+```{r}
+df_final <- subset(df_clean, select = -c(censustract,originalnbdate,policytermindicator,basementonly, upperlevelcondo,floodzone_modrisk,floodzone_undetermined))
+```
+
 
 ```{r}
 ## Variable selections using Lasso
