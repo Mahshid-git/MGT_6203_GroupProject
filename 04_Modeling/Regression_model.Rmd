@@ -63,7 +63,7 @@ test <- df[-train_ind, ]
 
 ```{r}
 
-lm_model = lm(totalinsurancepremiumofthepolicy ~., train)
+lm_model = lm(totalinsurancepremiumofthepolicy ~., train, na.action = na.exclude)
 summary(lm_model)
 
 ```
@@ -86,46 +86,16 @@ dev.off ()
 ```
 
 
-
 ```{r}
-# define training control
-train_control <- trainControl(method="cv", number=10)
-#10 fold cv
+lm_pred <- predict(lm_model, test, na.action = na.exclude)
 
-
-
-fit1= train(totalinsurancepremiumofthepolicy~., data=train, method="rf",na.action = na.fail,
-            trControl=train_control,importance=TRUE)
-
-```
-
-```{r}
-#see the performance on the training data
-
-fit1
-
-plot(fit1)
 ```
 
 
 ```{r}
-######## evaluate variable importance
-varImp(fit1)
-
-plot(varImp(fit1), top = 5)
+final_data<- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = lm_pred)
+View(final_data)
 ```
-
-
-```{r}
-########## predict on unseen data
-
-pred1 = predict(fit1, testing)
-
-confusionMatrix(pred1, testing$loan_status)
-```
-
-
-
 
 
 
