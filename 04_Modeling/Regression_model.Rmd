@@ -88,31 +88,36 @@ dev.off ()
 
 ```{r}
 lm_pred <- predict(lm_model, test, na.action = na.exclude)
-
 ```
 
 
 ```{r}
-final_data<- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = lm_pred)
-View(final_data)
+lm_data <- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = lm_pred)
+View(lm_data)
 ```
 
 ```{r}
-actuals_preds <- data.frame(final_data)
+actuals_preds <- data.frame(lm_data)
 
 # Min-Max Accuracy Calculation
 min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
 
 # => 64.00%, min_max accuracy
 
-# MAPE Calculation
-mape <- mean(abs((actuals_preds$Predicted - actuals_preds$Actual))/actuals_preds$Actual)  
-# => 82.7%, mean absolute percentage deviation
-
-mape
 ```
 
 
+```{r}
+# find the error
+Error <- actuals_preds$Actual - actuals_preds$Predicted
+actuals_preds1 <- cbind(actuals_preds, Error)
+View(actuals_preds1)
+
+rmse <- sqrt(mean((actuals_preds1$Error)^2))
+rmse
+
+
+```
 
 
 
