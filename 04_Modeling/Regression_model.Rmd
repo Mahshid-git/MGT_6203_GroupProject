@@ -39,6 +39,8 @@ df_final <- read_parquet(file_path, as_tibble = TRUE)
 # Exclude some insignificant variables for linear regression
 df <- subset(df_final, select = -c(latitude, longitude, originalnbdate, postfirmconstructionindicator, reportedzipcode, basementonly, policyeffectivedate, policyterminationdate, lowerflooronly, morethan1floor))
 
+View(df)
+
 # Export datafile for analysis
 file_path1 <- "../04_Modeling/df.parquet"
 write_parquet(df, file_path1)
@@ -65,9 +67,6 @@ lm_model = lm(totalinsurancepremiumofthepolicy ~., train)
 summary(lm_model)
 
 ```
-```{r}
-plot_model(lm_model, vline.color = "red", sort.est = TRUE)
-```
 
 
 ```{r}
@@ -86,14 +85,9 @@ dev.copy(jpeg, filename="Linear_Residues_Plot.jpg");
 dev.off ()
 ```
 
+```{r}
 
-
-
-
-
-
-
-
+```
 
 
 
