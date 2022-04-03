@@ -151,6 +151,14 @@ write_parquet(df_final, file_path3)
 file_path4 <- "../03_EDA/df_num.parquet"
 write_parquet(df_num, file_path4)
 
+# df includes only 7 variables as suggested by Lasso for analysis
+
+df <- subset(df_num, select = c(deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk))
+                                       
+file_path5 <- "../03_EDA/df_num.parquet"
+write_parquet(df, file_path5)
+
+
 ```
 
 
