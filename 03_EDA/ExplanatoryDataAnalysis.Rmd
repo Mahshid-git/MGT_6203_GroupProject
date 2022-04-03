@@ -17,11 +17,15 @@ rm(list = ls())
 ```
 
 ```{r}
+install.packages("rattle")
 library(arrow) # needed to read parquet file
 library(plyr)
 library(dplyr)
 library(car)
 library(caret)
+library(rattle)
+library(rpart.plot)
+library(rpart)
 library(ggplot2)
 library(corrplot)
 ```
@@ -191,11 +195,6 @@ corrplot(corr_plot, tl.col = "red", tl.srt = 45, bg = "White",
 
 # Part 1: Supervised classification model
 
-```{r}
-fit = lm(totalinsurancepremiumofthepolicy ~., df)
-summary(fit)
-```
-
 
 ### Decision Tree
 
@@ -222,12 +221,18 @@ train_control <- trainControl(method="cv", number=10)
 
 fit1= train(totalinsurancepremiumofthepolicy~., data=df, method="rpart", trControl = train_control)
 
-fit1
+#fit1
+
+#summary(fit1)
+```
+
+
+```{r}
 
 fancyRpartPlot(fit1$finalModel)
-
-summary(fit1)
 ```
+
+
 
 ```{r}
 #### which are the important variables
@@ -238,6 +243,12 @@ summary(df)
 
 plot(varImp(fit1), top = 5)
 
+
+```
+
+
+
+```{r}
 ########## predict on unseen data
 
 pred1 = predict(fit1, testing)
@@ -246,13 +257,27 @@ confusionMatrix(pred1, testing$loan_status)
 ```
 
 
+# Splitting data to 70% traning, 30% testing
+
+```{r}
+set.seed(100)
+size <- fllor(0.7*nrow(df_num))
+train_ind <- sample(seq_len(nrow(df_num)), size = size)
+
+train <- df_num[train_ind, ]
+test <- df_num[-train_ind, ]
+```
 
 
+#1. Fiting linear regression
 
 
+```{r}
 
+lm_model = lm(totalinsurancepremiumofthepolicy ~., train)
+summary(lm_model)
 
-
+```
 
 
 
