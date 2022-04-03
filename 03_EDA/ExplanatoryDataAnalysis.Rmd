@@ -22,7 +22,7 @@ library(caret)
 library(ggplot2)
 library(corrplot)
 ```
-## test lai push
+
 ```{r}
 file_path <- "../02_CleanData/policy_clean.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
@@ -70,15 +70,16 @@ highlyCor_Col = colnames(df_num)[highly_corelated]
 highlyCor_Col
 
 ```
-```{r}
-# Now, we remove highly correlated variables from original dataset and create final dataset
 
-df_final = df2[, -which(colnames(df2) %in% highlyCor_Col)]
-dim(df_final)
+```{r}
+# Now, we remove highly correlated variables from original dataset and create cleaner dataset
+
+df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
+dim(df_clean)
 
 ```
 ```{r}
-fit = lm(totalinsurancepremiumofthepolicy ~., df_final)
+fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
 summary(fit)
 ```
 ## from the output, we can remove some insignificant variables 
