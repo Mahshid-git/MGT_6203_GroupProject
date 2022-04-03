@@ -99,12 +99,15 @@ df_final <- subset(df_clean, select = -c(censustract,policytermindicator,mobileh
 View(df_final)
 ```
 
-
 ```{r}
 str(df_final)
+```
 
-# Select only numerical columns for data analysist
-df_num <- subset(df_final, select = -c(originalconstructiondate, policyeffectivedate, policyterminationdate))
+
+```{r}
+# Select only numerical columns for data analysist (leave data type in df_final)
+
+df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate, policyeffectivedate, policyterminationdate))
 ```
 
 ```{r}
