@@ -111,6 +111,14 @@ rmse
 ```
 
 
+```{r}
+
+pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data=train, scale=TRUE, validation ="CV", na.action = na.exclude)
+
+
+
+
+```
 
 
 
