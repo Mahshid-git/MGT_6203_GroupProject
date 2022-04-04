@@ -4,6 +4,7 @@ author: "Anh Tran"
 date: "4/3/2022"
 output: html_document
 ---
+# This part will involve all classification models
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -17,6 +18,7 @@ rm(list = ls())
 ```{r include=FALSE}
 if (!require("sjPlot")) install.packages("sjPlot")
 if (!require("tidyverse")) install.packages("sjPlot")
+
 library(arrow) # needed to read parquet file
 library(plyr)
 library(dplyr)
@@ -30,14 +32,58 @@ library(corrplot)
 library(sjPlot)
 library(gridExtra)
 library(tidyverse)
+library(rsample)
+library(randomForest)
+library(janitor)
+library(glmnet)
+library(tree)
+library(RColorBrewer)
+library(gridExtra)
+library(pls)
 ```
 
-# This part will involve all classification models
 
 ```{r}
 file_path <- "../03_EDA/df_final.parquet"
-df <- read_parquet(file_path, as_tibble = TRUE)
-#View(df)
+df1 <- read_parquet(file_path, as_tibble = TRUE)
+View(df1)
+```
+
+# as construction (1), elevatedbuildingindicator (17), occupancytype(1),floodzone_highrisk (5),basementenclosurecrawlspacetype(52), lowerlevelcondo(1),numberoffloorsininsuredbuilding(13), originalconstructiondate(1481) have small number of NA value, I will remove all these rows
+
+```{r}
+df1 <- df1[!is.na(df1$basementenclosurecrawlspacetype), ]
+df1 <- df1[!is.na(df1$construction), ]
+df1 <- df1[!is.na(df1$elevatedbuildingindicator), ]
+df1 <- df1[!is.na(df1$occupancytype), ]
+df1 <- df1[!is.na(df1$lowerlevelcondo), ]
+df1 <- df1[!is.na(df1$originalconstructiondate), ]
+df1 <- df1[!is.na(df1$floodzone_highrisk), ]
+df1 <- df1[!is.na(df1$numberoffloorsininsuredbuilding), ]
+```
+
+
+```{r}
+apply(is.na(df1), 2, sum)
+```
+## There are large number of NA values in deductibleamountincontentscoverage, longtitude, latitude, and basementandabove 
+
+
+```{r}
+unique(df1[c("deductibleamountincontentscoverage")])
+```
+```{r}
+View(df1)
+```
+
+### Note: should scale numeric data before doing analysis. I exclude 4 columns of "date"
+
+```{r}
+df = as.data.frame(scale(df1[,c(3,6,7,12,17,18)])) # standardize all numerical variables
+
+df <- cbind(df1[,c(1,2,4,5,8,9,13,16,20,21,22)],df,df1[,19]) # Add categorical columns  back in
+
+View(df)
 ```
 
 
@@ -53,12 +99,36 @@ train <- df[train_ind, ]
 test <- df[-train_ind, ]
 ```
 
+# Function used to compute r squared and mean squared error
 
-#1. Fiting Linear Regression
+```{r}
+rsquared <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
+    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy-pred)^2)/sum((test$totalinsurancepremiumofthepolicy-mean(test$totalinsurancepremiumofthepolicy))^2))
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
+    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy-pred)^2)/sum((train$totalinsurancepremiumofthepolicy-mean(train$totalinsurancepremiumofthepolicy))^2))
+  }
+  return (r2)
+}
+
+
+MSE <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
+    mse = sum((test$totalinsurancepremiumofthepolicy-pred)^2)/length(test$totalinsurancepremiumofthepolicy)
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
+    mse = sum((train$totalinsurancepremiumofthepolicy-pred)^2)/length(train$totalinsurancepremiumofthepolicy)
+  }
+  return (mse)
+}
+```
+
+#1. Linear Regression
 
 ```{r}
 
-lm_model = lm(totalinsurancepremiumofthepolicy ~., train, na.action = na.exclude)
+lm_model = lm(totalinsurancepremiumofthepolicy ~., data = train, na.action = na.exclude)
 summary(lm_model)
 ```
 
@@ -67,7 +137,7 @@ summary(lm_model)
 plot_model(lm_model, show.values = TRUE, value.offset = 0.4,sort.est = TRUE, title = "Estimates of Linear Regression")
 
 dev.copy(jpeg,filename="Linear_Estimates_Plot.jpg");
-dev.off ();
+dev.off ()
 ```
 
 ```{r}
@@ -110,15 +180,42 @@ rmse <- sqrt(mean((actuals_preds1$Error)^2))
 rmse
 ```
 
+#2. PCA
 
 ```{r}
 
-pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data=train, scale=TRUE, validation ="CV", na.action = na.exclude)
-
-
-
+pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data=train, validation ="CV", na.action = na.exclude)
 
 ```
+
+
+```{r}
+validationplot(pcr.model, val.type="MSEP", main = "Premium Price", ylab = "Mean Squared Error")
+
+dev.copy(jpeg, filename="PCR_Plot.jpg");
+dev.off ()
+
+```
+
+
+```{r}
+summary(pcr.model)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
