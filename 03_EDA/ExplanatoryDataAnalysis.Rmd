@@ -34,7 +34,7 @@ library(tidyr)
 ```{r}
 file_path <- "../02_CleanData/policy_clean.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
-View(df)
+#View(df)
 #head(df)
 ```
 #1 Explore 
@@ -42,7 +42,7 @@ View(df)
 ```{r}
 # Select continuous variables for correlation examination
 # comment
-df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,elevationdifference,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
+df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
 
 ```
 
@@ -95,7 +95,7 @@ highlyCor_Col
 
 df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
 dim(df_clean)
-
+View(df_clean)
 ```
 
 ```{r}
@@ -103,7 +103,7 @@ fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
 summary(fit)
 ```
 
-## from the output, we can remove some insignificant variables, but keep lattitude and reportedzipcode for mapping the areas where flood occurs
+## from the output, we can remove some insignificant variables
 
 ```{r}
 fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined -postfirmconstructionindicator -reportedzipcode -lowerflooronly -upperandlowerfloors -basementonly -morethan1floor -deductibleamountinbuildingcoverage, df_clean)
@@ -113,7 +113,7 @@ summary(fit1)
 ## Create the final dataset for further analysis
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract,policytermindicator, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperandlowerfloors, basementonly, morethan1floor, deductibleamountinbuildingcoverage))
+df_final <- subset(df_clean, select = -c(censustract,policytermindicator, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperandlowerfloors, basementonly, morethan1floor, deductibleamountinbuildingcoverage, elevationdifference))
 
 View(df_final)
 ```
@@ -134,7 +134,7 @@ View(df_num)
 
 ```{r}
 # categorical columns
-df_cat <- subset(df_num, select = -c(elevationdifference, latitude, longitude , policycost,policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
+df_cat <- subset(df_num, select = -c(latitude, longitude , policycost,policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
 lapply(df_cat, unique)
 
 ```
@@ -142,68 +142,39 @@ lapply(df_cat, unique)
 1. Stepwise regression
 
 ```{r}
-scaledData = as.data.frame(scale(df_num[,c(5,6,7,10,11,13,14)]))
-scaledData <- cbind(df_num[,c(1,2,3,4,8,9,12)],scaledData,df_num[,15]) # Add categorical columns  back in
+scaledData = as.data.frame(scale(df_num[,c(6,7,10,13,14)])) # standardize all numerical variables
+scaledData <- cbind(df_num[,c(1,2,3,4,5,8,9,11,12, 16, 17,18)],scaledData,df_num[,15]) # Add categorical columns  back in
 
 colnames(scaledData)[15] <- "totalinsurancepremiumofthepolicy"
 ```
 
 ```{r}
-ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
 
 lmFit_Step <- train(totalinsurancepremiumofthepolicy ~ ., data = scaledData, "lmStepAIC", scope = 
-                 list(lower = Crime~1, upper = Crime~.), direction = "backward",trControl=ctrl,      na.action=na.exclude)
+                 list(lower = Crime~1, upper = Crime~.), direction = "backward",trControl=ctrl,                                   na.action=na.exclude)
 
 ```
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype + construction + crsdiscount + 
+    deductibleamountincontentscoverage + elevatedbuildingindicator + 
+    numberoffloorsininsuredbuilding + occupancytype + policycount + 
+    primaryresidenceindicator + lowerlevelcondo + basementandabove + 
+    floodzone_highrisk + latitude + longitude + totalbuildinginsurancecoverage + 
+    totalcontentsinsurancecoverage,
+    data = scaledData)
+summary(mod_Step)
+```
 
 ```{r}
 ## Variable selections using Lasso
 
 train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
 
-lasso <- train(totalinsurancepremiumofthepolicy ~., df_num,
+lasso <- train(totalinsurancepremiumofthepolicy ~., scaledData,
                method = 'lasso',
                preProc = c('scale', 'center'),
                trControl = train_con,
@@ -219,15 +190,19 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, so the totalinsurancepremiumofthepolicy will mainly depends on 7 variables as folows: totalinsurancepremiumofthepolicy ~ deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk 
+# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, in this case is construction variables. However, in Stepwise method the construction is significant so I will keep it. # so the totalinsurancepremiumofthepolicy will have 18 variables 
 
+```{r}
+#rerun to check if there is still in-significant variables. Look like the daatset is good to go now
+fit2 = lm(totalinsurancepremiumofthepolicy ~. , df_num)
 
-
+summary(fit2)
+```
 ```{r}
 
 # Exporting the dataframe to clean folder
 
-# df_final includes numeric and "date" columns
+# df_final includes numeric (df_num) and 4 "date" columns
 
 file_path3 <- "../03_EDA/df_final.parquet"
 write_parquet(df_final, file_path3)
@@ -235,13 +210,6 @@ write_parquet(df_final, file_path3)
 # df_num includes only numeric variables for analysis
 file_path4 <- "../03_EDA/df_num.parquet"
 write_parquet(df_num, file_path4)
-
-# df includes only 7 predicted variables and response as suggested by Lasso for analysis
-
-df <- subset(df_num, select = c(totalinsurancepremiumofthepolicy, deductibleamountincontentscoverage, federalpolicyfee, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, primaryresidenceindicator, policycost, floodzone_highrisk))
-                                       
-file_path5 <- "../03_EDA/df.parquet"
-write_parquet(df, file_path5)
 
 ```
 
