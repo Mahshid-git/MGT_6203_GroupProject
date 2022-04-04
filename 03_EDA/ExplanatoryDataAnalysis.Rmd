@@ -34,11 +34,10 @@ library(tidyr)
 ```{r}
 file_path <- "../02_CleanData/policy_clean.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
+View(df)
 #head(df)
 ```
 #1 Explore 
-
-
 
 ```{r}
 # Select continuous variables for correlation examination
@@ -99,25 +98,22 @@ dim(df_clean)
 
 ```
 
-
-
-
-
 ```{r}
 fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
 summary(fit)
 ```
+
 ## from the output, we can remove some insignificant variables, but keep lattitude and reportedzipcode for mapping the areas where flood occurs
 
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined, df_clean)
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined -postfirmconstructionindicator -reportedzipcode -lowerflooronly -upperandlowerfloors -basementonly -morethan1floor -deductibleamountinbuildingcoverage, df_clean)
 summary(fit1)
 ```
 
 ## Create the final dataset for further analysis
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract,policytermindicator,mobilehomeortrailer, upperlevelcondo,floodzone_modrisk,floodzone_undetermined))
+df_final <- subset(df_clean, select = -c(censustract,policytermindicator, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperandlowerfloors, basementonly, morethan1floor, deductibleamountinbuildingcoverage))
 
 View(df_final)
 ```
@@ -129,12 +125,78 @@ str(df_final)
 
 ```{r}
 # Select only numerical columns for data analysist (leave data type in df_final)
-# df_num inlcudes 25 variables
+# df_num includes 18 variables
 
 df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate, policyeffectivedate, policyterminationdate))
 
 View(df_num)
 ```
+
+```{r}
+# categorical columns
+df_cat <- subset(df_num, select = -c(elevationdifference, latitude, longitude , policycost,policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
+lapply(df_cat, unique)
+
+```
+
+1. Stepwise regression
+
+```{r}
+scaledData = as.data.frame(scale(df_num[,c(5,6,7,10,11,13,14)]))
+scaledData <- cbind(df_num[,c(1,2,3,4,8,9,12)],scaledData,df_num[,15]) # Add categorical columns  back in
+
+colnames(scaledData)[15] <- "totalinsurancepremiumofthepolicy"
+```
+
+```{r}
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+
+lmFit_Step <- train(totalinsurancepremiumofthepolicy ~ ., data = scaledData, "lmStepAIC", scope = 
+                 list(lower = Crime~1, upper = Crime~.), direction = "backward",trControl=ctrl,      na.action=na.exclude)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 ## Variable selections using Lasso
