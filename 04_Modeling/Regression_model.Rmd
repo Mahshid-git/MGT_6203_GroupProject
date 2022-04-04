@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 ```
 
-```{r}
+```{r include=FALSE}
 if (!require("sjPlot")) install.packages("sjPlot")
 if (!require("tidyverse")) install.packages("sjPlot")
 library(arrow) # needed to read parquet file
@@ -31,150 +31,14 @@ library(sjPlot)
 library(gridExtra)
 library(tidyverse)
 ```
-# This part will involve all classification models
 
-# I have run linear regression for all 3 datasets (final, num and df with only 7 variables as in Module 3_EDA). I found that after remove some variables as below, the model is very good so I will keep columns as in (df dataset)
+# This part will involve all classification models
 
 ```{r}
 file_path <- "../03_EDA/df_final.parquet"
-df_final <- read_parquet(file_path, as_tibble = TRUE)
-
-# Exclude some insignificant variables for linear regression
-df <- subset(df_final, select = -c(latitude, longitude, originalnbdate, postfirmconstructionindicator, reportedzipcode, basementonly, policyeffectivedate, policyterminationdate, lowerflooronly, morethan1floor))
-
-View(df)
-
-# Export datafile for analysis
-file_path1 <- "../04_Modeling/df.parquet"
-write_parquet(df, file_path1)
+df <- read_parquet(file_path, as_tibble = TRUE)
+#View(df)
 ```
-
-```{r}
-df_catergorical <- df[c("basementenclosurecrawlspacetype", "construction",'deductibleamountinbuildingcoverage', "deductibleamountincontentscoverage", "numberoffloorsininsuredbuilding", "occupancytype", "primaryresidenceindicator", "lowerlevelcondo", "upperandlowerfloors", "basementandabove", "floodzone_highrisk")]
-lapply(df_catergorical, unique)
-colSums(is.na(df_catergorical))
-```
-
-```{r}
-# Remove negative value
-df <- df[df$policycost >= 0, ]
-df <- df[df$federalpolicyfee >= 0, ]
-df <- df[df$totalinsurancepremiumofthepolicy >= 0, ]
-t(sapply(df, range))
-```
-
-
-```{r}
-# Replace 1 NA value by mode in 3 columns
-calc_mode <- function(x){
-  distinct_values <- unique(x)
-  distinct_tabulate <- tabulate(match(x, distinct_values))
-  distinct_values[which.max(distinct_tabulate)]
-}
-
-df_catergorical %>% 
-  mutate(construction = if_else(is.na(construction), 
-                         calc_mode(construction), 
-                         construction))
-df_catergorical %>% 
-  mutate(lowerlevelcondo = if_else(is.na(lowerlevelcondo), 
-                         calc_mode(lowerlevelcondo), 
-                         lowerlevelcondo))
-
-df_catergorical %>% 
-  mutate(occupancytype = if_else(is.na(occupancytype), 
-                         calc_mode(occupancytype), 
-                         occupancytype))
-
-
-```
-```{r}
-colSums(is.na(df_catergorical))
-```
-
-
-
-```{r}
-glimpse(df)
-colSums(is.na(df))
-```
-
-
-
-```{r}
-v1 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=occupancytype, fill=occupancytype), show.legend=FALSE) +
-  xlab("basementenclosurecrawlspacetype") +
-  ylab("Premium Price")
-
-v2 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=construction, fill=construction), show.legend=FALSE) +
-  xlab("construction") +
-  ylab("Premium Price")
-
-v3 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=elevationdifference, fill=elevationdifference), show.legend = FALSE) +
-   xlab("deductibleamountinbuildingcoverage") +
-  ylab("Premium Price")
-
-v4 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=lowerlevelcondo, fill=lowerlevelcondo), show.legend = FALSE) +
-   xlab("lowerlevelcondo") +
-  ylab("Premium Price")
-
-v5 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=elevatedbuildingindicator, fill=elevatedbuildingindicator), show.legend = FALSE) +
-   xlab("elevatedbuildingindicator") +
-  ylab("Premium Price")
-
-grid.arrange(v1, v2, v3, v4, v5, nrow=2)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # Splitting data to 70% traning, 30% testing
@@ -207,7 +71,6 @@ dev.copy(jpeg,filename="Linear_Estimates_Plot.jpg");
 dev.off ();
 ```
 
-
 ```{r}
 par(mfrow = c(2,2))
 plot(lm_model)
@@ -234,7 +97,7 @@ actuals_preds <- data.frame(lm_data)
 # Min-Max Accuracy Calculation
 min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
 min_max_accuracy
-# => 64.00%, min_max accuracy
+# => 65%, min_max accuracy
 
 ```
 
