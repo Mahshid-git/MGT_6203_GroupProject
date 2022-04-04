@@ -29,7 +29,7 @@ library(corrplot)
 #setwd("C:/Users/mjafarpour/Downloads/MGT_6203_GroupProject/")
 file_path <- "../01_RawData/nfip_Houston_flood_policies.parquet"
 policy_df <- read_parquet(file_path, as_tibble = TRUE)
-head(policy_df)
+#head(policy_df)
 ```
 
 ## I filter the dataset again for Texas only 
@@ -41,7 +41,7 @@ policy_df <- subset(policy_df, propertystate == 'TX' )
 
 ```{r}
 policy_df = subset(policy_df,select=-c(agriculturestructureindicator, propertystate, reportedcity, houseofworshipindicator,nonprofitindicator,regularemergencyprogramindicator,smallbusinessindicatorbuilding,hfiaasurcharge))
-View(policy_df)
+#View(policy_df)
 ```
 
 ```{r}
