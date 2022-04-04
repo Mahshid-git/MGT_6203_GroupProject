@@ -15,7 +15,8 @@ rm(list = ls())
 ```
 
 ```{r}
-#install.packages('sjPlot')
+if (!require("sjPlot")) install.packages("sjPlot")
+if (!require("tidyverse")) install.packages("sjPlot")
 library(arrow) # needed to read parquet file
 library(plyr)
 library(dplyr)
@@ -28,6 +29,7 @@ library(ggplot2)
 library(corrplot)
 library(sjPlot)
 library(gridExtra)
+library(tidyverse)
 ```
 # This part will involve all classification models
 
@@ -47,6 +49,50 @@ file_path1 <- "../04_Modeling/df.parquet"
 write_parquet(df, file_path1)
 ```
 
+```{r}
+df_catergorical <- df[c("basementenclosurecrawlspacetype", "construction",'deductibleamountinbuildingcoverage', "deductibleamountincontentscoverage", "numberoffloorsininsuredbuilding", "occupancytype", "primaryresidenceindicator", "lowerlevelcondo", "upperandlowerfloors", "basementandabove", "floodzone_highrisk")]
+lapply(df_catergorical, unique)
+colSums(is.na(df_catergorical))
+```
+
+```{r}
+# Remove negative value
+df <- df[df$policycost >= 0, ]
+df <- df[df$federalpolicyfee >= 0, ]
+df <- df[df$totalinsurancepremiumofthepolicy >= 0, ]
+t(sapply(df, range))
+```
+
+
+```{r}
+# Replace 1 NA value by mode in 3 columns
+calc_mode <- function(x){
+  distinct_values <- unique(x)
+  distinct_tabulate <- tabulate(match(x, distinct_values))
+  distinct_values[which.max(distinct_tabulate)]
+}
+
+df_catergorical %>% 
+  mutate(construction = if_else(is.na(construction), 
+                         calc_mode(construction), 
+                         construction))
+df_catergorical %>% 
+  mutate(lowerlevelcondo = if_else(is.na(lowerlevelcondo), 
+                         calc_mode(lowerlevelcondo), 
+                         lowerlevelcondo))
+
+df_catergorical %>% 
+  mutate(occupancytype = if_else(is.na(occupancytype), 
+                         calc_mode(occupancytype), 
+                         occupancytype))
+
+
+```
+```{r}
+colSums(is.na(df_catergorical))
+```
+
+
 
 ```{r}
 glimpse(df)
@@ -57,7 +103,7 @@ colSums(is.na(df))
 
 ```{r}
 v1 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=basementenclosurecrawlspacetype, fill=basementenclosurecrawlspacetype), show.legend=FALSE) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=occupancytype, fill=occupancytype), show.legend=FALSE) +
   xlab("basementenclosurecrawlspacetype") +
   ylab("Premium Price")
 
@@ -67,13 +113,13 @@ v2 <- ggplot(df) +
   ylab("Premium Price")
 
 v3 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=deductibleamountinbuildingcoverage, fill=deductibleamountinbuildingcoverage), show.legend = FALSE) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=elevationdifference, fill=elevationdifference), show.legend = FALSE) +
    xlab("deductibleamountinbuildingcoverage") +
   ylab("Premium Price")
 
 v4 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=deductibleamountincontentscoverage, fill=deductibleamountincontentscoverage), show.legend = FALSE) +
-   xlab("deductibleamountincontentscoverage") +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=lowerlevelcondo, fill=lowerlevelcondo), show.legend = FALSE) +
+   xlab("lowerlevelcondo") +
   ylab("Premium Price")
 
 v5 <- ggplot(df) +
@@ -81,12 +127,7 @@ v5 <- ggplot(df) +
    xlab("elevatedbuildingindicator") +
   ylab("Premium Price")
 
-v6 <- ggplot(df) +
-  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=elevationdifference, fill=elevationdifference), show.legend = FALSE) +
-  xlab("elevationdifference") +
-  ylab("Premium Price")
-
-grid.arrange(v1, v2, v3, v4, v5, v6, nrow=2)
+grid.arrange(v1, v2, v3, v4, v5, nrow=2)
 ```
 
 
