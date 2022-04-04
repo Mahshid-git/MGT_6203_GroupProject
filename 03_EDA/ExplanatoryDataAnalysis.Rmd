@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 ```
 
-```{r}
+```{r include=FALSE}
 
 library(arrow) # needed to read parquet file
 library(plyr)
@@ -28,18 +28,18 @@ library(rpart.plot)
 library(rpart)
 library(ggplot2)
 library(corrplot)
+library(tidyr)
 ```
 
 ```{r}
 file_path <- "../02_CleanData/policy_clean.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
-head(df)
-
+#head(df)
 ```
+#1 Explore 
 
-```{r}
-str(df)
-```
+
+
 ```{r}
 # Select continuous variables for correlation examination
 # comment
@@ -49,21 +49,17 @@ df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crs
 
 
 ```{r}
-# Examine correlation between all numeric variables
+# Examine correlation between all numeric variables 
 cormat <-cor(df_num, use = "pairwise.complete.obs")
-
-corrplot(cormat, tl.col = "red", tl.srt = 45, bg = "White",
-         title = "\n\n Correlation Plot Of Gambling Data",
-         type = "lower")
-
 ```
+
 ```{r}
-#cormat <-cor(df_num, use = "pairwise.complete.obs")
-
-#corrplot(cormat)
+corrplot(cormat, tl.col = "red", tl.srt = 45, bg = "White",
+         title = "\n\n Correlation Plot of Flood Data",
+         type = "lower")
+dev.copy(jpeg, filename="Correlation Plot of Flood Data.jpg");
+dev.off ()
 ```
-
-
 
 
 ```{r}
@@ -73,10 +69,15 @@ cormat_nonlin
 ```
 
 ```{r}
-corrplot(cormat_nonlin)
+corrplot(cormat_nonlin, tl.col = "red", tl.srt = 45, bg = "White",
+         title = "\n\n Correlation Plot of Flood Data with Spearman Method",
+         type = "lower")
+
+dev.copy(jpeg, filename="Correlation Plot of Flood Data using Spearman.jpg");
+dev.off ()
 ```
 
-## check Multicollinearity
+## Remove Multicollinearity with cutoff 0.6
 
 
 ```{r}
@@ -91,12 +92,17 @@ highlyCor_Col
 ```
 
 ```{r}
-# Now, we remove highly correlated variables from original dataset and create cleaner dataset
+# Now, we remove highly correlated variables from original dataset and create cleaner dataset, the dataset now contains 41 columns
 
 df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
 dim(df_clean)
 
 ```
+
+
+
+
+
 ```{r}
 fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
 summary(fit)
