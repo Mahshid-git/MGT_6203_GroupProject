@@ -60,7 +60,6 @@ test <- df[-train_ind, ]
 
 lm_model = lm(totalinsurancepremiumofthepolicy ~., train, na.action = na.exclude)
 summary(lm_model)
-
 ```
 
 
