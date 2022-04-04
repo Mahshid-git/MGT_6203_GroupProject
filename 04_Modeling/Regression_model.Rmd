@@ -27,6 +27,7 @@ library(rpart)
 library(ggplot2)
 library(corrplot)
 library(sjPlot)
+library(gridExtra)
 ```
 # This part will involve all classification models
 
@@ -45,6 +46,95 @@ View(df)
 file_path1 <- "../04_Modeling/df.parquet"
 write_parquet(df, file_path1)
 ```
+
+
+```{r}
+glimpse(df)
+colSums(is.na(df))
+```
+
+
+
+```{r}
+v1 <- ggplot(df) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=basementenclosurecrawlspacetype, fill=basementenclosurecrawlspacetype), show.legend=FALSE) +
+  xlab("basementenclosurecrawlspacetype") +
+  ylab("Premium Price")
+
+v2 <- ggplot(df) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=construction, fill=construction), show.legend=FALSE) +
+  xlab("construction") +
+  ylab("Premium Price")
+
+v3 <- ggplot(df) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=deductibleamountinbuildingcoverage, fill=deductibleamountinbuildingcoverage), show.legend = FALSE) +
+   xlab("deductibleamountinbuildingcoverage") +
+  ylab("Premium Price")
+
+v4 <- ggplot(df) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=deductibleamountincontentscoverage, fill=deductibleamountincontentscoverage), show.legend = FALSE) +
+   xlab("deductibleamountincontentscoverage") +
+  ylab("Premium Price")
+
+v5 <- ggplot(df) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=elevatedbuildingindicator, fill=elevatedbuildingindicator), show.legend = FALSE) +
+   xlab("elevatedbuildingindicator") +
+  ylab("Premium Price")
+
+v6 <- ggplot(df) +
+  geom_boxplot(aes(y=totalinsurancepremiumofthepolicy, x=elevationdifference, fill=elevationdifference), show.legend = FALSE) +
+  xlab("elevationdifference") +
+  ylab("Premium Price")
+
+grid.arrange(v1, v2, v3, v4, v5, v6, nrow=2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Splitting data to 70% traning, 30% testing
 
