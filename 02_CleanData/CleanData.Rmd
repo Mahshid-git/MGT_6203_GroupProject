@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 ```
 
-```{r}
+```{r include=FALSE}
 library(arrow) # needed to read parquet file
 library(dplyr)
 library(car)
@@ -32,7 +32,7 @@ policy_df <- read_parquet(file_path, as_tibble = TRUE)
 #head(policy_df)
 ```
 
-## I filter the dataset again for Texas only 
+## Filter the dataset again for Texas only 
 ```{r}
 ## Filter propertystate = 'TX"
 policy_df <- subset(policy_df, propertystate == 'TX' )
@@ -54,7 +54,7 @@ colSums(is.na(policy_df))
 ```{r}
 # Filter more columns with significant number of NA values
 policy_df = subset(policy_df,select=-c(basefloodelevation,cancellationdateoffloodpolicy, countycode, elevationcertificateindicator, lowestadjacentgrade, lowestfloorelevation, obstructiontype))                          
-View(policy_df)
+#View(policy_df)
 ```
 
 ```{r}
@@ -110,7 +110,7 @@ policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator==
 # Continue remove category variables
 
 df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
-View(df)
+#View(df)
 ```
 
 
@@ -126,7 +126,7 @@ date_cols <- c("originalconstructiondate", "originalnbdate", "policyeffectivedat
 df1 <- df %>%
    mutate_at(vars(all_of(date_cols)), funs(as.Date(., "%Y-%m-%d")))
 
-str(df1)
+#str(df1)
 ```
 
 ```{r}
@@ -151,6 +151,60 @@ chars <- sapply(df2, is.character)
 df2[ , chars] <- as.data.frame(apply(df2[ , chars], 2, as.numeric))
 str(df2)
 ```
+
+```{r}
+# Remove negative value
+df2 <- df2[df2$policycost >= 0, ]
+df2 <- df2[df2$federalpolicyfee >= 0, ]
+df2 <- df2[df2$totalinsurancepremiumofthepolicy >= 0, ]
+```
+
+# Examine the response variable (totalinsurancepremiumofthepolicy)
+
+```{r}
+summary(df2$totalinsurancepremiumofthepolicy)
+```
+
+```{r}
+ggplot(df2, aes(x = totalinsurancepremiumofthepolicy, fill = cut(x=totalinsurancepremiumofthepolicy, 100))) +
+  geom_histogram(show.legend = FALSE) +
+  scale_fill_discrete(h = c(240, 10), c = 120, l = 70) +
+  theme_minimal() +
+  labs(x = "Total Insurance Premium", y = "Frequency") +
+  ggtitle("Histogram of Total Insurance Premium")
+
+dev.copy(jpeg,filename="Histogram of Total Insurance Premium_Original.jpg");
+dev.off ()
+
+```
+
+
+```{r}
+# As the number of totalinsurancepremiumofthepolicy > 5000 is only 0.1% then we remove all rows with the value higher than 5000 to eleminate error
+
+df2 <- df2[(df2$totalinsurancepremiumofthepolicy > 5000),]
+
+ggplot(df2, aes(x = totalinsurancepremiumofthepolicy, fill = cut(x=totalinsurancepremiumofthepolicy, 100))) +
+  geom_histogram(show.legend = FALSE) +
+  scale_fill_discrete(h = c(240, 10), c = 120, l = 70) +
+  theme_minimal() +
+  labs(x = "Total Insurance Premium", y = "Frequency") +
+  ggtitle("Histogram of Total Insurance Premium")
+
+dev.copy(jpeg,filename="Histogram of Total Insurance Premium_Final.jpg");
+dev.off ()
+```
+```{r}
+summary(df2$totalinsurancepremiumofthepolicy)
+ggplot(data = df2, aes(x=totalinsurancepremiumofthepolicy)) + geom_density(alpha = 0.5)+
+        labs(x = "Total Insurance Premium", y = "Frequency")+
+                ggtitle("Distribution of Insurance Premium")
+
+dev.copy(jpeg,filename="Distribution of Total Insurance Premium_Final.jpg");
+dev.off ()
+```
+
+
 ```{r}
 # Exporting the dataframe to clean folder
 file_path2 <- "../02_CleanData/policy_clean.parquet"
