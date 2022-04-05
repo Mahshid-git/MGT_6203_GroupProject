@@ -29,6 +29,7 @@ library(rpart)
 library(ggplot2)
 library(corrplot)
 library(tidyr)
+library(visdat) # to plot missing data
 ```
 
 ```{r}
@@ -42,8 +43,14 @@ df <- read_parquet(file_path, as_tibble = TRUE)
 ```{r}
 # Select continuous variables for correlation examination
 # comment
-df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
+df$ratemethodmanual <- ifelse(df$ratemethod==1, 1, 0)
+df$ratemethodunderinsured <- ifelse(df$ratemethod==5, 1, 0)
+# df$ratemethodprp <- ifelse(df$ratemethod==7, 1, 0) #preferered risk policy # not significant
+df$elevationdifference2 <- ifelse(df$elevationdifference==999 | df$elevationdifference==9989 | df$elevationdifference==-9986, NA, df$elevationdifference)
+#Policycount is the number of insured units in an active status. ==> Defined a new column: to count for 1 unit at a time
+df$unitinsuredcoverage <- df$totalbuildinginsurancecoverage/df$policycount 
 
+df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,elevationdifference2, federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage, unitinsuredcoverage))
 ```
 
 
@@ -54,7 +61,7 @@ cormat <-cor(df_num, use = "pairwise.complete.obs")
 
 ```{r}
 corrplot(cormat, tl.col = "red", tl.srt = 45, bg = "White",
-         title = "\n\n Correlation Plot of Flood Data",
+         title = "\n\n Correlation Plot of Flood Insurance Data",
          type = "lower")
 dev.copy(jpeg, filename="Correlation Plot of Flood Data.jpg");
 dev.off ()
@@ -64,7 +71,7 @@ dev.off ()
 ```{r}
 # Looking for Spearman correlation (checks nonlinear correlation too eg y=x3 ha Spearman correlation of 1)
 cormat_nonlin <- cor(df_num, use = "pairwise.complete.obs", method="spearman")
-cormat_nonlin
+#cormat_nonlin
 ```
 
 ```{r}
@@ -91,36 +98,174 @@ highlyCor_Col
 ```
 
 ```{r}
-# Now, we remove highly correlated variables from original dataset and create cleaner dataset, the dataset now contains 41 columns
+# Now, we remove highly correlated variables from original dataset and create cleaner dataset, the dataset now contains 40 columns
 
 df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
 dim(df_clean)
-View(df_clean)
+#View(df_clean)
 ```
 
 ```{r}
-fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
+cormat_nonlin2 <- cormat_nonlin
+cormat_nonlin2[is.na(cormat_nonlin)]= 0 # replacing NA with 0
+findCorrelation(cormat_nonlin2, cutoff = 0.5, names=TRUE)
+```
+
+```{r}
+#totalbuildinginsurancecoverage already omitted via linear correlationmatrix
+df_clean2 <- subset(df_clean, select=-c(crsdiscount, censustract, policycost)) 
+```
+
+
+```{r}
+# Correlation Matrix for Indicator variables
+df_ind <- subset(df, select = c(floodzone_highrisk, floodzone_modrisk, lowerlevelcondo, upperlevelcondo, lowerflooronly, basementandabove, basementonly, morethan1floor, ratemethodmanual, ratemethodunderinsured))
+
+cormat_ind <-cor(df_ind, use = "pairwise.complete.obs")
+
+corrplot(cormat_ind, tl.col = "red", tl.srt = 45, bg = "White",
+         title = "\n\n Correlation Plot - Indicator Variables of Flood Insurance Data",
+         type = "lower")
+```
+
+```{r}
+highly_corelated_ind = findCorrelation(cormat_ind, cutoff = 0.6)
+highlyCor_Col_ind = colnames(df_ind)[highly_corelated_ind]
+highlyCor_Col_ind
+```
+
+
+```{r}
+df_clean3 <- subset(df_clean2, select=-c(floodzone_modrisk)) 
+dim(df_clean3)
+```
+
+
+
+```{r}
+# data size is too big; cannot show it
+#df_clean3 %>%
+#  vis_miss(sort_miss = TRUE, warn_large_data=FALSE)
+```
+
+```{r}
+# needed for next pot or it gives memory error: cannot allocate vector of size --- GB/MB')
+#memory.limit(50000)
+memory.limit()
+```
+
+```{r}
+colnames(df_num)
+```
+
+```{r}
+# Plot all the variables gaianst each other to see THEIR VISUAL RELATIONSHIP
+# library(tidyr)
+# have to do them one by on otherwise: memory error
+
+ggplot(df_clean3, aes(x = basementenclosurecrawlspacetype, y = totalinsurancepremiumofthepolicy, color = floodzone_highrisk)) +
+    geom_point() +
+    labs(x="Basement enclosure crawl space type", y="Total Insurance Premium of the Policy" )
+    theme_bw() # The classic dark-on-light ggplot2 theme
+```
+```{r}
+ggplot(df_clean3, aes(x = construction, y = totalinsurancepremiumofthepolicy)) +
+    geom_point(na.rm=TRUE, verbose=FALSE) +
+    theme_bw() # The classic dark-on-light ggplot2 theme
+```
+
+```{r}
+ggplot(df_clean3, aes(x = elevationdifference2, y = totalinsurancepremiumofthepolicy)) +
+    geom_point(na.rm=TRUE, verbose=FALSE) +
+    labs(x="Elevation Difference", y="Total Insurance Premium of the Policy")
+    theme_bw() 
+```
+
+
+```{r}
+ggplot(df_clean3, aes(x = totalcontentsinsurancecoverage, y = totalinsurancepremiumofthepolicy)) +
+    geom_point(na.rm=TRUE) +
+    labs(x="Total Contents Insurance Coverage", y="Total Insurance Premium of the Policy" )
+    theme_bw() 
+```
+
+
+
+```{r}
+ggplot(df_clean3, aes(x = unitinsuredcoverage, y = totalinsurancepremiumofthepolicy)) +
+    geom_point(na.rm=TRUE) +
+    labs(x="Unit Insurance Coverage", y="Total Insurance Premium of the Policy" )
+    theme_bw() 
+```
+```{r}
+ggplot(df_clean3, aes(x = longitude, y = totalinsurancepremiumofthepolicy)) +
+    geom_point(na.rm=TRUE) +
+    labs(x="Longitude", y="Total Insurance Premium of the Policy" )
+    theme_bw() 
+```
+```{r}
+ggplot(df_clean3, aes(x = latitude, y = totalinsurancepremiumofthepolicy)) +
+    geom_point(na.rm=TRUE) +
+    labs(x="Latitude", y="Total Insurance Premium of the Policy" )
+    theme_bw() 
+```
+
+
+
+
+
+```{r}
+# regression should not be on dates or zipcode (which is a category not value)
+tmp <- df_clean3 %>%
+    select( -contains('date', ignore.case = TRUE)) %>%
+    select(-c(reportedzipcode, ratemethod))
+
+fit = lm(totalinsurancepremiumofthepolicy ~ ., data=tmp)
 summary(fit)
 ```
 
-## from the output, we can remove some insignificant variables
+## from the output, we can remove insignificant variables & some variables with NA coefficients
 
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined -postfirmconstructionindicator -reportedzipcode -lowerflooronly -upperandlowerfloors -basementonly -morethan1floor -deductibleamountinbuildingcoverage, df_clean)
+tmp <- tmp %>%
+    select(-c(longitude, policytermindicator, basementonly, mobilehomeortrailer, floodzone_undetermined,
+              ratemethodunderinsured, elevationdifference2))
+
+#fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer #-floodzone_modrisk -floodzone_undetermined -postfirmconstructionindicator -reportedzipcode -lowerflooronly #-upperandlowerfloors -basementonly -morethan1floor -deductibleamountinbuildingcoverage, df_clean)
+
+fit1 = lm(totalinsurancepremiumofthepolicy ~., data=tmp)
 summary(fit1)
 ```
 
 ## Create the final dataset for further analysis
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract,policytermindicator, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperandlowerfloors, basementonly, morethan1floor, deductibleamountinbuildingcoverage, elevationdifference))
-
+df_final <- tmp
 View(df_final)
 ```
 
 ```{r}
 str(df_final)
 ```
+
+```{r}
+# scaling data
+scaled_df <- as.data.frame(scale(tmp))
+train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
+
+lasso <- train(totalinsurancepremiumofthepolicy ~., data = scaled_df,
+               method = 'lasso',
+               preProc = c('scale', 'center'),
+               trControl = train_con,
+              na.action=na.exclude)
+lasso
+```
+
+
+
+
+
+
 
 
 ```{r}
