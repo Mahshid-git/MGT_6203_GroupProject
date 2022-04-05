@@ -106,14 +106,14 @@ summary(fit)
 ## from the output, we can remove some insignificant variables
 
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined -postfirmconstructionindicator -reportedzipcode -lowerflooronly -upperandlowerfloors -basementonly -morethan1floor -deductibleamountinbuildingcoverage, df_clean)
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -deductibleamountinbuildingcoverage -numberoffloorsininsuredbuilding -policytermindicator -postfirmconstructionindicator -reportedzipcode -lowerflooronly -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined    -upperandlowerfloors -basementonly -morethan1floor, df_clean)
 summary(fit1)
 ```
 
-## Create the final dataset for further analysis
+## Create the final dataset for further analysis (remove policycost as it = premium =admin fee)
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract,policytermindicator, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperandlowerfloors, basementonly, morethan1floor, deductibleamountinbuildingcoverage, elevationdifference))
+df_final <- subset(df_clean, select = -c(censustract, deductibleamountinbuildingcoverage, numberoffloorsininsuredbuilding, policytermindicator, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, upperandlowerfloors, basementonly,morethan1floor, elevationdifference, policycost))
 
 View(df_final)
 ```
@@ -125,7 +125,7 @@ str(df_final)
 
 ```{r}
 # Select only numerical columns for data analysist (leave data type in df_final)
-# df_num includes 18 variables
+# df_num includes 17 variables
 
 df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate, policyeffectivedate, policyterminationdate))
 
@@ -134,7 +134,7 @@ View(df_num)
 
 ```{r}
 # categorical columns
-df_cat <- subset(df_num, select = -c(latitude, longitude , policycost,policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
+df_cat <- subset(df_num, select = -c(crsdiscount, latitude, longitude , policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
 lapply(df_cat, unique)
 
 ```
@@ -142,28 +142,26 @@ lapply(df_cat, unique)
 1. Stepwise regression
 
 ```{r}
-scaledData = as.data.frame(scale(df_num[,c(6,7,10,13,14)])) # standardize all numerical variables
-scaledData <- cbind(df_num[,c(1,2,3,4,5,8,9,11,12, 16, 17,18)],scaledData,df_num[,15]) # Add categorical columns  back in
+scaledData = as.data.frame(scale(df_num[,c(3,6,7,10,11,12)])) # standardize all numerical variables
+scaledData <- cbind(df_num[,c(1,2,4,5,8,9,14,15,16)],scaledData,df_num[,13]) # Add categorical columns  back in
 
-colnames(scaledData)[15] <- "totalinsurancepremiumofthepolicy"
+colnames(scaledData)[13] <- "totalinsurancepremiumofthepolicy"
 ```
 
 ```{r}
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
 
 lmFit_Step <- train(totalinsurancepremiumofthepolicy ~ ., data = scaledData, "lmStepAIC", scope = 
-                 list(lower = Crime~1, upper = Crime~.), direction = "backward",trControl=ctrl,                                   na.action=na.exclude)
+                 list(lower = totalinsurancepremiumofthepolicy~1, upper = totalinsurancepremiumofthepolicy~.), direction = "backward",trControl=ctrl, na.action=na.exclude)
 
 ```
 
 
 
 ```{r}
-mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype + construction + crsdiscount + 
-    deductibleamountincontentscoverage + elevatedbuildingindicator + 
-    numberoffloorsininsuredbuilding + occupancytype + policycount + 
-    primaryresidenceindicator + lowerlevelcondo + basementandabove + 
-    floodzone_highrisk + latitude + longitude + totalbuildinginsurancecoverage + 
+mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype + construction +   deductibleamountincontentscoverage + elevatedbuildingindicator + occupancytype + policycount + 
+    lowerlevelcondo + basementandabove + floodzone_highrisk + 
+    crsdiscount + latitude + longitude + totalbuildinginsurancecoverage + 
     totalcontentsinsurancecoverage,
     data = scaledData)
 summary(mod_Step)
@@ -190,10 +188,10 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, in this case is construction variables. However, in Stepwise method the construction is significant so I will keep it. # so the totalinsurancepremiumofthepolicy will have 18 variables 
+# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, but lookx like we should kep all. # so the totalinsurancepremiumofthepolicy will have 15 variables and 4 date variables
 
 ```{r}
-#rerun to check if there is still in-significant variables. Look like the daatset is good to go now
+#rerun to check if there is still in-significant variables. Look like the dataset is good to go now
 fit2 = lm(totalinsurancepremiumofthepolicy ~. , df_num)
 
 summary(fit2)
