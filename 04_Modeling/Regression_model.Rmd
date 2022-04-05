@@ -198,7 +198,18 @@ require(ggbiplot)
 ```
 
 ```{r}
-PCA <- prcomp(na.omit(df[,1:15]), scale = TRUE)  # apply PCA
+#Remove all NA for PCA
+
+row.has.na <- apply(df, 1, function(x){any(is.na(x))})
+sum(row.has.na)
+df_filter <- df[!row.has.na,]
+
+apply(is.na(df_filter), 2, sum)
+```
+
+
+```{r}
+PCA <- prcomp(df_filter[,1:15], scale = TRUE)  # apply PCA
 
 summary(PCA)
 ```
@@ -229,14 +240,14 @@ R2 <- data.frame(n_PCA = numeric(), R2_PCA = numeric(), R2_cross_val = numeric()
 
 for (i in 1:15) {
   pc <- PCA$x[,1:i]  # use some i principal components from 4 to 10
-  pc_data <- cbind(df[,16], pc)  # create data set
+  pc_data <- cbind(df_filter[,16], pc)  # create data set
   
   model <- lm(V1~.,data = as.data.frame(pc_data)) # fit model
-  R2_PCA <- 1 - sum(model$residuals^2)/sum((df$totalinsurancepremiumofthepolicy -        mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared for PCA model
+  R2_PCA <- 1 - sum(model$residuals^2)/sum((df_filter$totalinsurancepremiumofthepolicy -        mean(df_filter$totalinsurancepremiumofthepolicy))^2) # calculate R-squared for PCA model
 
   
   cross_val <- cv.lm(as.data.frame(pc_data), model, m=5) # cross-validate 
-  R2_cross_val <- 1 - attr(cross_val,"ms")*nrow(df)/sum((df$totalinsurancepremiumofthepolicy - mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
+  R2_cross_val <- 1 - attr(cross_val,"ms")*nrow(df_filter)/sum((df_filter$totalinsurancepremiumofthepolicy - mean(df_filter$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
   
   R2[nrow(R2)+1,]<- c(i, R2_PCA, R2_cross_val)
  }
