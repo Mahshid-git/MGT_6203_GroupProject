@@ -216,9 +216,10 @@ ggplot(df_clean3, aes(x = latitude, y = totalinsurancepremiumofthepolicy)) +
 
 ```{r}
 # regression should not be on dates or zipcode (which is a category not value)
+# policycount: already included in unitinsuredcoverage
 tmp <- df_clean3 %>%
     select( -contains('date', ignore.case = TRUE)) %>%
-    select(-c(reportedzipcode, ratemethod))
+    select(-c(reportedzipcode, ratemethod, elevationdifference, policycount))
 
 fit = lm(totalinsurancepremiumofthepolicy ~ ., data=tmp)
 summary(fit)
@@ -229,7 +230,7 @@ summary(fit)
 ```{r}
 tmp <- tmp %>%
     select(-c(longitude, policytermindicator, basementonly, mobilehomeortrailer, floodzone_undetermined,
-              ratemethodunderinsured, elevationdifference2))
+              ratemethodunderinsured))
 
 #fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -upperlevelcondo -mobilehomeortrailer #-floodzone_modrisk -floodzone_undetermined -postfirmconstructionindicator -reportedzipcode -lowerflooronly #-upperandlowerfloors -basementonly -morethan1floor -deductibleamountinbuildingcoverage, df_clean)
 
@@ -241,11 +242,11 @@ summary(fit1)
 
 ```{r}
 df_final <- tmp
-View(df_final)
+#View(df_final)
 ```
 
 ```{r}
-str(df_final)
+str(df_final) # 22 columns
 ```
 
 ```{r}
@@ -261,100 +262,37 @@ lasso <- train(totalinsurancepremiumofthepolicy ~., data = scaled_df,
 lasso
 ```
 
-
-
-
-
-
-
-
 ```{r}
-# Select only numerical columns for data analysist (leave data type in df_final)
-# df_num includes 18 variables
-
-df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate, policyeffectivedate, policyterminationdate))
-
-View(df_num)
-```
-
-```{r}
-# categorical columns
-df_cat <- subset(df_num, select = -c(latitude, longitude , policycost,policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
-lapply(df_cat, unique)
-
-```
-
-1. Stepwise regression
-
-```{r}
-scaledData = as.data.frame(scale(df_num[,c(6,7,10,13,14)])) # standardize all numerical variables
-scaledData <- cbind(df_num[,c(1,2,3,4,5,8,9,11,12, 16, 17,18)],scaledData,df_num[,15]) # Add categorical columns  back in
-
-colnames(scaledData)[15] <- "totalinsurancepremiumofthepolicy"
-```
-
-```{r}
-ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
-
-lmFit_Step <- train(totalinsurancepremiumofthepolicy ~ ., data = scaledData, "lmStepAIC", scope = 
-                 list(lower = Crime~1, upper = Crime~.), direction = "backward",trControl=ctrl,                                   na.action=na.exclude)
-
-```
-
-
-
-```{r}
-mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype + construction + crsdiscount + 
-    deductibleamountincontentscoverage + elevatedbuildingindicator + 
-    numberoffloorsininsuredbuilding + occupancytype + policycount + 
-    primaryresidenceindicator + lowerlevelcondo + basementandabove + 
-    floodzone_highrisk + latitude + longitude + totalbuildinginsurancecoverage + 
-    totalcontentsinsurancecoverage,
-    data = scaledData)
-summary(mod_Step)
-```
-
-```{r}
-## Variable selections using Lasso
-
-train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
-
-lasso <- train(totalinsurancepremiumofthepolicy ~., scaledData,
-               method = 'lasso',
-               preProc = c('scale', 'center'),
-               trControl = train_con,
-              na.action=na.exclude)
-lasso
-```
-
-```{r}
-# Get coef
-
 predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso$bestTune))
-
-# We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, in this case is construction variables. However, in Stepwise method the construction is significant so I will keep it. # so the totalinsurancepremiumofthepolicy will have 18 variables 
+# From the Lasso Regression models, we can discard the variables with coeeficients near to zero (abs value less than 0.02), 
+# so the totalinsurancepremiumofthepolicy will have  variables 
+
 
 ```{r}
-#rerun to check if there is still in-significant variables. Look like the daatset is good to go now
-fit2 = lm(totalinsurancepremiumofthepolicy ~. , df_num)
-
+fit2 = lm(totalinsurancepremiumofthepolicy ~deductibleamountincontentscoverage + numberoffloorsininsuredbuilding + 
+              basementandabove + ratemethodmanual + elevatedbuildingindicator + occupancytype + 
+              totalcontentsinsurancecoverage + elevationdifference2 + deductibleamountinbuildingcoverage +
+              latitude +  postfirmconstructionindicator + lowerlevelcondo + upperandlowerfloors + floodzone_highrisk +
+              unitinsuredcoverage,
+          data=scaled_df)
 summary(fit2)
+
 ```
+
+
 ```{r}
-
-# Exporting the dataframe to clean folder
-
-# df_final includes numeric (df_num) and 4 "date" columns
-
-file_path3 <- "../03_EDA/df_final.parquet"
+file_path3 <- "../03_EDA/df_final_Mahshid.parquet"
+# 16 variables
+df_final <- tmp %>%
+    select(c(totalinsurancepremiumofthepolicy, deductibleamountincontentscoverage, 
+              numberoffloorsininsuredbuilding, 
+              basementandabove, ratemethodmanual, elevatedbuildingindicator, occupancytype, 
+              totalcontentsinsurancecoverage, elevationdifference2, deductibleamountinbuildingcoverage,
+              latitude,  postfirmconstructionindicator, lowerlevelcondo, upperandlowerfloors, floodzone_highrisk,
+              unitinsuredcoverage))
 write_parquet(df_final, file_path3)
-
-# df_num includes only numeric variables for analysis
-file_path4 <- "../03_EDA/df_num.parquet"
-write_parquet(df_num, file_path4)
 
 ```
 
