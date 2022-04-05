@@ -204,10 +204,10 @@ ggplot(df_clean3, aes(x = longitude, y = totalinsurancepremiumofthepolicy)) +
     theme_bw() 
 ```
 ```{r}
-ggplot(df_clean3, aes(x = latitude, y = totalinsurancepremiumofthepolicy)) +
-    geom_point(na.rm=TRUE) +
-    labs(x="Latitude", y="Total Insurance Premium of the Policy" )
-    theme_bw() 
+#ggplot(df_clean3, aes(x = latitude, y = totalinsurancepremiumofthepolicy)) +
+ #   geom_point() +
+ #   labs(x="Latitude", y="Total Insurance Premium of the Policy" )
+ #   theme_bw() 
 ```
 
 
