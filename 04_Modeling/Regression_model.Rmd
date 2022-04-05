@@ -68,6 +68,11 @@ apply(is.na(df1), 2, sum)
 ```
 ## There are large number of NA values in deductibleamountincontentscoverage, longtitude, latitude, and basementandabove 
 
+```{r}
+pairs(df1[c("construction", "lowerlevelcondo", "totalbuildinginsurancecoverage")])
+```
+
+
 
 ```{r}
 unique(df1[c("deductibleamountincontentscoverage")])
@@ -85,12 +90,19 @@ View(df)
 ```
 
 
+```{r}
+pairs(df)
+```
+
+
+
+
 # Splitting data to 70% training, 30% testing
 
 ```{r}
 set.seed(100)
 
-size <- floor(0.8*nrow(df))
+size <- floor(0.7*nrow(df))
 train_ind <- sample(seq_len(nrow(df)), size = size)
 
 train <- df[train_ind, ]
@@ -182,7 +194,7 @@ rmse
 
 ```{r}
 
-pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data = df, validation = "CV", )
+pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data = train, validation = "CV", )
 
 ```
 
