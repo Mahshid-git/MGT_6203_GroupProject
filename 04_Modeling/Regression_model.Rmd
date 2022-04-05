@@ -46,7 +46,7 @@ library(pls)
 ```{r}
 file_path <- "../03_EDA/df_final.parquet"
 df1 <- read_parquet(file_path, as_tibble = TRUE)
-View(df1)
+#View(df1)
 ```
 
 # as construction (1), elevatedbuildingindicator (17), occupancytype(1),floodzone_highrisk (5),basementenclosurecrawlspacetype(52), lowerlevelcondo(1),numberoffloorsininsuredbuilding(13), originalconstructiondate(1481) have small number of NA value, I will remove all these rows
@@ -59,7 +59,7 @@ df1 <- df1[!is.na(df1$occupancytype), ]
 df1 <- df1[!is.na(df1$lowerlevelcondo), ]
 df1 <- df1[!is.na(df1$originalconstructiondate), ]
 df1 <- df1[!is.na(df1$floodzone_highrisk), ]
-df1 <- df1[!is.na(df1$numberoffloorsininsuredbuilding), ]
+
 ```
 
 
@@ -72,27 +72,25 @@ apply(is.na(df1), 2, sum)
 ```{r}
 unique(df1[c("deductibleamountincontentscoverage")])
 ```
-```{r}
-View(df1)
-```
 
-### Note: should scale numeric data before doing analysis. I exclude 4 columns of "date"
+### Note: should scale numeric data before doing analysis. I exclude 4 columns of "date" (9,10,12,13)
 
 ```{r}
-df = as.data.frame(scale(df1[,c(3,6,7,12,17,18)])) # standardize all numerical variables
+df = as.data.frame(scale(df1[,c(3,6,7,15,16)])) # standardize all numerical variables
 
-df <- cbind(df1[,c(1,2,4,5,8,9,13,16,20,21,22)],df,df1[,19]) # Add categorical columns  back in
+df = as.data.frame(scale(df1[,c(3,6,7,15,16)]))
+df <- cbind(df1[,c(1,2,4,5,8,11,14,18,19,20)],df,df1[,17]) # Add categorical columns  back in
 
 View(df)
 ```
 
 
-# Splitting data to 70% traning, 30% testing
+# Splitting data to 70% training, 30% testing
 
 ```{r}
 set.seed(100)
 
-size <- floor(0.7*nrow(df))
+size <- floor(0.8*nrow(df))
 train_ind <- sample(seq_len(nrow(df)), size = size)
 
 train <- df[train_ind, ]
@@ -157,7 +155,7 @@ lm_pred <- predict(lm_model, test, na.action = na.exclude)
 
 ```{r}
 lm_data <- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = lm_pred)
-View(lm_data)
+#View(lm_data)
 ```
 
 ```{r}
@@ -166,7 +164,7 @@ actuals_preds <- data.frame(lm_data)
 # Min-Max Accuracy Calculation
 min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
 min_max_accuracy
-# => 65%, min_max accuracy
+# => 61%, min_max accuracy
 
 ```
 
@@ -184,13 +182,13 @@ rmse
 
 ```{r}
 
-pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data=train, validation ="CV", na.action = na.exclude)
+pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data = df, validation = "CV", )
 
 ```
 
 
 ```{r}
-validationplot(pcr.model, val.type="MSEP", main = "Premium Price", ylab = "Mean Squared Error")
+validationplot(pcr.model, val.type="MSEP", main = "Premium Insurance of Policy", ylab = "Mean Squared Error")
 
 dev.copy(jpeg, filename="PCR_Plot.jpg");
 dev.off ()
@@ -201,12 +199,6 @@ dev.off ()
 ```{r}
 summary(pcr.model)
 ```
-
-
-
-
-
-
 
 
 
