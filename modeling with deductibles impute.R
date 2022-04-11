@@ -1,0 +1,208 @@
+library(arrow) # needed to read parquet file
+library(plyr)
+library(dplyr)
+library(car)
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(rpart)
+library(ggplot2)
+library(corrplot)
+install.packages("sjPlot")
+library(sjPlot)
+library(gridExtra)
+library(tidyverse)
+library(rsample)
+library(randomForest)
+library(janitor)
+library(glmnet)
+library(tree)
+library(RColorBrewer)
+library(gridExtra)
+install.packages("pls")
+library(pls)
+df1=df_num
+df1 <- df1[!is.na(df1$basementenclosurecrawlspacetype), ]
+df1 <- df1[!is.na(df1$construction), ]
+df1 <- df1[!is.na(df1$elevatedbuildingindicator), ]
+df1 <- df1[!is.na(df1$occupancytype), ]
+df1 <- df1[!is.na(df1$lowerlevelcondo), ]
+df1 <- df1[!is.na(df1$originalconstructiondate), ]
+df1 <- df1[!is.na(df1$floodzone_highrisk), ]
+```
+
+
+```{r}
+apply(is.na(df1), 2, sum)
+```
+## There are large number of NA values in deductibleamountincontentscoverage, longtitude, latitude, and basementandabove 
+
+```{r}
+pairs(df1[c("construction", "lowerlevelcondo", "totalbuildinginsurancecoverage")])
+```
+
+
+
+```{r}
+unique(df1[c("deductibleamountincontentscoverage")])
+```
+
+### Note: should scale numeric data before doing analysis. I exclude 4 columns of "date" (9,10,12,13)
+
+```{r}
+df = as.data.frame(scale(df1[,c(3,6,7,15,16)])) # standardize all numerical variables
+df = as.data.frame(scale(df1[,c(3,6,7,15,16)]))
+df <- cbind(df1[,c(1,2,4,5,8,11,14,18,19,20)],df,df1[,17]) # Add categorical columns  back in
+View(df)
+```
+
+
+
+
+
+# Splitting data to 70% training, 30% testing
+
+```{r}
+set.seed(100)
+size <- floor(0.7*nrow(df))
+train_ind <- sample(seq_len(nrow(df)), size = size)
+train <- df[train_ind, ]
+test <- df[-train_ind, ]
+```
+
+# Function used to compute r squared and mean squared error
+
+```{r}
+rsquared <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
+    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy-pred)^2)/sum((test$totalinsurancepremiumofthepolicy-mean(test$totalinsurancepremiumofthepolicy))^2))
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
+    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy-pred)^2)/sum((train$totalinsurancepremiumofthepolicy-mean(train$totalinsurancepremiumofthepolicy))^2))
+  }
+  return (r2)
+}
+MSE <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
+    mse = sum((test$totalinsurancepremiumofthepolicy-pred)^2)/length(test$totalinsurancepremiumofthepolicy)
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
+    mse = sum((train$totalinsurancepremiumofthepolicy-pred)^2)/length(train$totalinsurancepremiumofthepolicy)
+  }
+  return (mse)
+}
+```
+
+#1. Linear Regression
+
+```{r}
+lm_model = lm(totalinsurancepremiumofthepolicy ~., data = train, na.action = na.exclude)
+summary(lm_model)
+```
+
+
+```{r}
+plot_model(lm_model, show.values = TRUE, value.offset = 0.4,sort.est = TRUE, title = "Estimates of Linear Regression")
+dev.copy(jpeg,filename="Linear_Estimates_Plot.jpg");
+dev.off ()
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(lm_model)
+dev.copy(jpeg, filename="Linear_Residues_Plot.jpg");
+dev.off ()
+```
+
+
+```{r}
+lm_pred <- predict(lm_model, test, na.action = na.exclude)
+```
+
+
+```{r}
+lm_data <- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = lm_pred)
+#View(lm_data)
+```
+
+```{r}
+actuals_preds <- data.frame(lm_data)
+# Min-Max Accuracy Calculation
+min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
+min_max_accuracy
+# => 61%, min_max accuracy
+```
+
+```{r}
+# find the error
+Error <- actuals_preds$Actual - actuals_preds$Predicted
+actuals_preds1 <- cbind(actuals_preds, Error)
+View(actuals_preds1)
+rmse <- sqrt(mean((actuals_preds1$Error)^2))
+rmse
+```
+
+#2. PCA
+
+```{r}
+#PCA
+library(stats)  # for prcomp()
+library(DAAG)
+library(GGally)
+install.packages("devtools")
+library(devtools)
+require(ggbiplot)
+```
+
+```{r}
+#Remove all NA for PCA
+row.has.na <- apply(df, 1, function(x){any(is.na(x))})
+sum(row.has.na)
+df_filter <- df[!row.has.na,]
+apply(is.na(df_filter), 2, sum)
+```
+
+
+```{r}
+PCA <- prcomp(df_filter[,1:15], scale = TRUE)  # apply PCA
+summary(PCA)
+```
+
+
+```{r}
+# Common function to display PCA related plots in 2x2 grid
+screeplot(PCA, type='l')
+dev.copy(jpeg, filename="PCA_ScreePlot.jpg")
+dev.off ()
+bplot = ggbiplot(PCA,
+                 choices = c(1,2),
+                 obs.scale =1, var.scale =1,
+                 circle = TRUE,
+                 ellipse = TRUE,
+                 ellipse.prob = 0.68)
+print(bplot)
+dev.copy(jpeg, filename="PCA_Plot.jpg")
+dev.off ()
+```
+
+```{r}
+R2 <- data.frame(n_PCA = numeric(), R2_PCA = numeric(), R2_cross_val = numeric()) #create a vector to store the R-squared values
+for (i in 1:15) {
+  pc <- PCA$x[,1:i]  # use some i principal components from 4 to 10
+  pc_data <- cbind(df_filter[,16], pc)  # create data set
+  
+  model <- lm(V1~.,data = as.data.frame(pc_data)) # fit model
+  R2_PCA <- 1 - sum(model$residuals^2)/sum((df_filter$totalinsurancepremiumofthepolicy -        mean(df_filter$totalinsurancepremiumofthepolicy))^2) # calculate R-squared for PCA model
+  
+  cross_val <- cv.lm(as.data.frame(pc_data), model, m=5) # cross-validate 
+  R2_cross_val <- 1 - attr(cross_val,"ms")*nrow(df_filter)/sum((df_filter$totalinsurancepremiumofthepolicy - mean(df_filter$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
+  
+  R2[nrow(R2)+1,]<- c(i, R2_PCA, R2_cross_val)
+}
+```
+
+
+
+```{r}
+plot(R2$R2_cross_val, xlab = "Principal Component", ylab = "Cross-validated R-squared with this many principal components", x = R2$n_PCA, ylim =c(0,1),type = "b")
+```
