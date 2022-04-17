@@ -440,3 +440,7 @@ SS.total - (SS.regression+SS.residual)
 test.rsq <- 1 - SS.residual/SS.total  
 test.rsq
 ```
+
+```{r}
+summary(mod4)
+```
