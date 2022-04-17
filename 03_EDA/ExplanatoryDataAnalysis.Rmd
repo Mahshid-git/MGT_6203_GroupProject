@@ -161,6 +161,28 @@ View(df_num)
 df_cat <- subset(df_num, select = c(basementenclosurecrawlspacetype, construction, elevatedbuildingindicator, postfirmconstructionindicator, primaryresidenceindicator, lowerflooronly, upperandlowerfloors, basementandabove, morethan1floor))
 lapply(df_cat, unique)
 ```
+```{r}
+
+# Exporting the dataframe to clean folder
+
+# df_final includes numeric (df_num) and 4 "date" columns
+
+file_path3 <- "../03_EDA/df_final_filtered.parquet"
+write_parquet(df_final, file_path3)
+
+# df_num includes only numeric variables for analysis
+file_path4 <- "../03_EDA/df_num.parquet"
+write_parquet(df_num, file_path4)
+
+```
+
+
+# Import data again to avoid run all above commands
+```{r}
+file_path <- "../03_EDA/df_num.parquet"
+df_num <- read_parquet(file_path, as_tibble = TRUE)
+
+```
 
 1. Stepwise regression
 
@@ -199,7 +221,7 @@ summary(mod_Step)
 ```{r}
 ## Variable selections using Lasso
 
-train_con <- trainControl(method = 'cv', number = 2) # using 5 folds cv
+train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
 
 lasso <- train(totalinsurancepremiumofthepolicy ~., scaledData,
                method = 'lasso',
@@ -217,53 +239,58 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, but look like we should kep all. # so the totalinsurancepremiumofthepolicy will have 17 variables and 2 date variables
-
-
-
-
-##chi-square test is a statistical test of independence
-##calculate chi-square statistics between every feature variable and 
-#the target variable
-
-##observe the existence of a relationship between the variables 
-#and the target
-##target variable is independent of the feature variable, 
-#we can discard that feature variable
+# From the Lasso Regression models, we can discard the variables with coeeficients decreasing to zero, in this case we will remove variable "lowerflooronly"
 
 ```{r}
-weights = chi.squared(totalinsurancepremiumofthepolicy ~ ., df_num)
-#weights of discrete attributes basing on a chi-squared test
-print(weights)
-subset = cutoff.k(weights, 5) #a cut-off above which we retain predictors
-f = as.simple.formula(subset, "totalinsurancepremiumofthepolicy")
-print(f)
+df_num = subset(df_num,select=-c(lowerflooronly)) 
+View(df_num)
 ```
 
-
-
-
-
-
 ```{r}
-#rerun to check if there is still in-significant variables. Look like the dataset is good to go now
-fit2 = lm(totalinsurancepremiumofthepolicy ~. , df_num)
-
-summary(fit2)
+for (col in c('construction', 'elevatedbuildingindicator', 'numberoffloorsininsuredbuilding', 'postfirmconstructionindicator', 'primaryresidenceindicator', 'upperandlowerfloors', 'basementandabove','morethan1floor')) {
+  plot <- ggplot(data = df_num,
+                 aes_string(x = col, y = 'totalinsurancepremiumofthepolicy', group = col, fill = col)) + 
+            geom_boxplot(show.legend = FALSE) + 
+            ggtitle(glue::glue("Boxplot of Total Insurance Premium per {col}"))
+  print(plot)
+}
 ```
 
 
 ```{r}
+for (feat in c('construction', 'elevatedbuildingindicator', 'numberoffloorsininsuredbuilding')) {
+  plot <- ggplot(data = df_num, aes_string(x = feat, y = 'totalinsurancepremiumofthepolicy', group = 'primaryresidenceindicator', fill = 'primaryresidenceindicator', col = 'primaryresidenceindicator')) + 
+    geom_jitter() + 
+    geom_smooth(method = 'lm') +
+    ggtitle(glue::glue("Charges vs {feat}"))  
+  print(plot)
+  dev.copy(jpeg, filename="{col}.jpg");
+  dev.off ()
+}
+```
 
-# Exporting the dataframe to clean folder
 
-# df_final includes numeric (df_num) and 4 "date" columns
 
-file_path3 <- "../03_EDA/df_final_filtered.parquet"
-write_parquet(df_final, file_path3)
+```{r}
+# Examine correlation between all numeric variables 
+cormat <-cor(df_num, use = "pairwise.complete.obs")
+```
+
+
+```{r}
+corrplot(cormat, tl.col = "red", tl.srt = 45, bg = "White",
+         title = "\n\n Correlation Plot of Flood Data",
+         type = "lower")
+dev.copy(jpeg, filename="Correlation Plot of Flood Data_NewData.jpg");
+dev.off ()
+```
+
+
+```{r}
+# Exporting the dataframe to Modeling folder
 
 # df_num includes only numeric variables for analysis
-file_path4 <- "../03_EDA/df_num.parquet"
+file_path4 <- "../04_Modeling/df_num_impute0.parquet"
 write_parquet(df_num, file_path4)
 
 ```
