@@ -164,11 +164,16 @@ policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator==
 View(policy_df)
 ```
 
+```{r}
+# Number of NA values in each column
+colSums(is.na(policy_df))
+```
+
 
 ```{r}
 # Continue remove category variables which have been replaced as above
 
-df = subset(policy_df,select=-c(condominiumindicator, construction, elevatedbuildingindicator, locationofcontents, postfirmconstructionindicator, primaryresidenceindicator))
+df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
 View(df)
 ```
 
@@ -250,7 +255,7 @@ dev.off ()
 
 
 ```{r}
-# As the number of totalinsurancepremiumofthepolicy > 5000 is only 0.1% then we remove all rows with the value higher than 5000 to eleminate error
+# As the number of totalinsurancepremiumofthepolicy > 3000 is only 0.1% then we remove all rows with the value higher than 5000 to eleminate error
 
 df2 <- df2[(df2$totalinsurancepremiumofthepolicy < 3000),]
 
@@ -282,6 +287,10 @@ ggplot(data = df2, aes(x=totalinsurancepremiumofthepolicy)) + geom_density(alpha
 
 dev.copy(jpeg,filename="Distribution of Total Insurance Premium_Final.jpg");
 dev.off ()
+```
+```{r}
+# Number of NA values in each column
+colSums(is.na(policy_df))
 ```
 
 
