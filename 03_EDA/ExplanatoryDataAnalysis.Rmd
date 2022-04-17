@@ -115,20 +115,13 @@ summary(fit1)
 ```{r}
 vif(fit1)
 ```
-```{r}
-# Multicollinearity
-# Check the variables of highly correlated
 
-highly_corelated = findCorrelation(cormat, cutoff = 0.6)
-
-highlyCor_Col = colnames(df_num)[highly_corelated]
-highlyCor_Col
-```
-
-## Create the final dataset for further analysis (remove policycost as it = premium =admin fee)
+# Choose a VIF cutoff under which a variable is retained (Zuur et al. 2010) 
+# vif>10  multi-collinearity: remove variables with vif > 10
+## Create the final dataset for further analysis 
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract, deductibleamountinbuildingcoverage, numberoffloorsininsuredbuilding, policytermindicator, postfirmconstructionindicator, reportedzipcode, lowerflooronly, upperlevelcondo, mobilehomeortrailer, floodzone_modrisk, floodzone_undetermined, upperandlowerfloors, basementonly,morethan1floor, elevationdifference, policycost))
+df_final <- subset(df_clean, select = -c(censustract, occupancytype, policytermindicator, reportedzipcode, basementonly,elevationdifference, mobilehomeortrailer, floodzone_highrisk, floodzone_modrisk, floodzone_undetermined, policyterminationdate, not_condo, u_condo, policyeffectivedate))
 
 View(df_final)
 ```
@@ -140,16 +133,16 @@ str(df_final)
 
 ```{r}
 # Select only numerical columns for data analysist (leave data type in df_final)
-# df_num includes 17 variables
+# df_num includes 21 variables
 
-df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate, policyeffectivedate, policyterminationdate))
+df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate))
 
 View(df_num)
 ```
 
 ```{r}
 # categorical columns
-df_cat <- subset(df_num, select = -c(crsdiscount, latitude, longitude , policycount, totalbuildinginsurancecoverage,totalcontentsinsurancecoverage , totalinsurancepremiumofthepolicy))
+df_cat <- subset(df_num, select = c(basementenclosurecrawlspacetype, construction, elevatedbuildingindicator, postfirmconstructionindicator, primaryresidenceindicator, lowerflooronly, upperandlowerfloors, basementandabove, morethan1floor))
 lapply(df_cat, unique)
 
 ```
@@ -157,10 +150,10 @@ lapply(df_cat, unique)
 1. Stepwise regression
 
 ```{r}
-scaledData = as.data.frame(scale(df_num[,c(3,6,7,10,11,12)])) # standardize all numerical variables
-scaledData <- cbind(df_num[,c(1,2,4,5,8,9,14,15,16)],scaledData,df_num[,13]) # Add categorical columns  back in
+scaledData = as.data.frame(scale(df_num[,c(3,4,5,7,8,9,10,11,14,15)])) # standardize all numerical variables
+scaledData <- cbind(df_num[,c(1,2,6,12,13,17,18,19,20)],scaledData,df_num[,16]) # Add categorical columns  back in
 
-colnames(scaledData)[13] <- "totalinsurancepremiumofthepolicy"
+colnames(scaledData)[16] <- "totalinsurancepremiumofthepolicy"
 ```
 
 ```{r}
