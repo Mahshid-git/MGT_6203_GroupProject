@@ -97,6 +97,49 @@ policy_df$u_condo=ifelse(policy_df$condominiumindicator=='U',1,0)
 # Construction
 policy_df$construction=ifelse(policy_df$construction=='Y',1,0)
 
+#imputing locationofcontents with mode
+val <- unique(policy_df$locationofcontents[!is.na(policy_df$locationofcontents)])                   
+my_mode <- val[which.max(tabulate(match(policy_df$locationofcontents, val)))]
+policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=my_mode
+
+#imputing locationofcontents with 0
+policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=0
+
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='0']=500
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='1']=1000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='2']=2000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='3']=3000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='4']=4000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='5']=5000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='9']=750
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='A']=10000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='B']=15000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='C']=20000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='D']=25000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='E']=50000
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='F']=1250
+policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='G']=1500
+
+policy_df$deductibleamountincontentscoverage[is.na(policy_df$deductibleamountincontentscoverage)]=0
+
+
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='0']=500
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='1']=1000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='2']=2000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='3']=3000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='4']=4000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='5']=5000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='9']=750
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='A']=10000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='B']=15000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='C']=20000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='D']=25000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='E']=50000
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='F']=1250
+policy_df$deductibleamountinbuildingcoverage[policy_df$deductibleamountinbuildingcoverage=='G']=1500
+
+policy_df$deductibleamountinbuildingcoverage[is.na(policy_df$deductibleamountinbuildingcoverage)]=0
+
 #elevatedbuildingindicator
 policy_df$elevatedbuildingindicator=ifelse(policy_df$elevatedbuildingindicator=='Y',1,0)
 
