@@ -105,6 +105,7 @@ policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=my_mode
 #imputing locationofcontents with 0
 policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=0
 
+#imputing the deductibles column
 policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='0']=500
 policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='1']=1000
 policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='2']=2000
