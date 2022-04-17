@@ -41,6 +41,7 @@ policy_df1 <- subset(policy_df1, propertystate == 'TX' )
 
 ```{r}
 policy_df = subset(policy_df1,select=-c(agriculturestructureindicator, propertystate, reportedcity, houseofworshipindicator,nonprofitindicator,regularemergencyprogramindicator,smallbusinessindicatorbuilding,hfiaasurcharge))
+rm(policy_df1)
 #View(policy_df)
 ```
 
@@ -97,14 +98,6 @@ policy_df$u_condo=ifelse(policy_df$condominiumindicator=='U',1,0)
 # Construction
 policy_df$construction=ifelse(policy_df$construction=='Y',1,0)
 
-#imputing locationofcontents with mode
-val <- unique(policy_df$locationofcontents[!is.na(policy_df$locationofcontents)])                   
-my_mode <- val[which.max(tabulate(match(policy_df$locationofcontents, val)))]
-policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=my_mode
-
-#imputing locationofcontents with 0
-policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=0
-
 #imputing the deductibles column
 policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='0']=500
 policy_df$deductibleamountincontentscoverage[policy_df$deductibleamountincontentscoverage=='1']=1000
@@ -143,38 +136,67 @@ policy_df$deductibleamountinbuildingcoverage[is.na(policy_df$deductibleamountinb
 
 #elevatedbuildingindicator
 policy_df$elevatedbuildingindicator=ifelse(policy_df$elevatedbuildingindicator=='Y',1,0)
-
-
-#Factor the locationofcontents column 
-policy_df$lowerflooronly=ifelse(policy_df$locationofcontents=='Lowest floor only above ground level (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
-policy_df$upperandlowerfloors=ifelse(policy_df$locationofcontents=='Lowest floor above ground level and higher floors (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
-policy_df$basementandabove=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
-policy_df$basementonly=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace only',1,0)
-policy_df$morethan1floor=ifelse(policy_df$locationofcontents=='Above ground level more than one full floor',1,0)
-policy_df$mobilehomeortrailer=ifelse(policy_df$locationofcontents==' Manufactured (mobile) home or travel trailer on foundation',1,0)
-
 #postfirmconstructionindicator
 policy_df$postfirmconstructionindicator=ifelse(policy_df$postfirmconstructionindicator=='Y',1,0)
-
 #primaryresidenceindicator
 policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator=='Y',1,0)
+
+
+#imputing locationofcontents with mode
+val <- unique(policy_df$locationofcontents[!is.na(policy_df$locationofcontents)])                   
+my_mode <- val[which.max(tabulate(match(policy_df$locationofcontents, val)))]
+policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=my_mode
+
+#imputing locationofcontents with 0
+policy_df$locationofcontents[is.na(policy_df$locationofcontents)]=0
+
+#imputing locationofcontents with mode
+val <- unique(policy_df$locationofcontents[!is.na(policy_df$locationofcontents)])                   
+my_mode <- val[which.max(tabulate(match(policy_df$locationofcontents, val)))]
+
+# making 2 dataframes
+policy_df0 = policy_df # 0 imputation
+policy_dfmode = policy_df #mode imputation
+
+#imputing locationofcontents with 0
+policy_df0$locationofcontents[is.na(policy_df0$locationofcontents)]=0
+#imputing locationofcontents with mode
+policy_dfmode$locationofcontents[is.na(policy_dfmode$locationofcontents)]=my_mode
+
+#Factor the locationofcontents column 
+policy_df0$lowerflooronly=ifelse(policy_df0$locationofcontents=='Lowest floor only above ground level (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
+policy_df0$upperandlowerfloors=ifelse(policy_df0$locationofcontents=='Lowest floor above ground level and higher floors (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
+policy_df0$basementandabove=ifelse(policy_df0$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
+policy_df0$basementonly=ifelse(policy_df0$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace only',1,0)
+policy_df0$morethan1floor=ifelse(policy_df0$locationofcontents=='Above ground level more than one full floor',1,0)
+policy_df0$mobilehomeortrailer=ifelse(policy_df0$locationofcontents==' Manufactured (mobile) home or travel trailer on foundation',1,0)
+
+#repeat the above for df_poilicymode
+#factor the locationofcontents column 
+policy_dfmode$lowerflooronly=ifelse(policy_dfmode$locationofcontents=='Lowest floor only above ground level (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
+policy_dfmode$upperandlowerfloors=ifelse(policy_dfmode$locationofcontents=='Lowest floor above ground level and higher floors (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
+policy_dfmode$basementandabove=ifelse(policy_dfmode$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
+policy_dfmode$basementonly=ifelse(policy_dfmode$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace only',1,0)
+policy_dfmode$morethan1floor=ifelse(policy_dfmode$locationofcontents=='Above ground level more than one full floor',1,0)
+policy_dfmode$mobilehomeortrailer=ifelse(policy_dfmode$locationofcontents==' Manufactured (mobile) home or travel trailer on foundation',1,0)
 ```
 
 ```{r}
-View(policy_df)
+#View(policy_df0)
 ```
 
 ```{r}
 # Number of NA values in each column
-colSums(is.na(policy_df))
+colSums(is.na(policy_df0))
 ```
 
 
 ```{r}
 # Continue remove category variables which have been replaced as above
 
-df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
-View(df)
+df = subset(policy_df0,select=-c(condominiumindicator, locationofcontents))
+dfmode = subset(policy_dfmode,select=-c(condominiumindicator, locationofcontents))
+#View(df)
 ```
 
 
@@ -190,6 +212,9 @@ date_cols <- c("originalconstructiondate", "originalnbdate", "policyeffectivedat
 df1 <- df %>%
    mutate_at(vars(all_of(date_cols)), funs(as.Date(., "%Y-%m-%d")))
 
+dfmode1 <- dfmode %>%
+   mutate_at(vars(all_of(date_cols)), funs(as.Date(., "%Y-%m-%d")))
+
 #str(df1)
 ```
 
@@ -201,6 +226,14 @@ df1$floodzone_highrisk <- ifelse( (startsWith(df1$floodzone, 'A') | (startsWith(
 df1$floodzone_modrisk <- ifelse( (startsWith(df1$floodzone, 'B') | (startsWith(df1$floodzone, 'C')) | (startsWith(df1$floodzone, 'X'))),1,0)
 # possible but undetermined flood hazards: starts with D
 df1$floodzone_undetermined <- ifelse( (startsWith(df1$floodzone, 'D')) ,1,0)
+
+
+#repeat for dfmode
+dfmode1$floodzone_highrisk <- ifelse( (startsWith(dfmode1$floodzone, 'A') | (startsWith(dfmode1$floodzone, 'V'))),1,0)
+# moderate-to-low risk if starts with B, C or X
+dfmode1$floodzone_modrisk <- ifelse( (startsWith(dfmode1$floodzone, 'B') | (startsWith(dfmode1$floodzone, 'C')) | (startsWith(dfmode1$floodzone, 'X'))),1,0)
+# possible but undetermined flood hazards: starts with D
+dfmode1$floodzone_undetermined <- ifelse( (startsWith(dfmode1$floodzone, 'D')) ,1,0)
 ```
 
 
@@ -214,6 +247,17 @@ chars <- sapply(df2, is.character)
 #convert all character columns to numeric
 df2[ , chars] <- as.data.frame(apply(df2[ , chars], 2, as.numeric))
 str(df2)
+
+#repeat for dfmode
+#identify all character columns
+dfmode2 <- subset(dfmode1, select = -c(floodzone))
+#convert all character columns to numeric
+dfmode2[ , chars] <- as.data.frame(apply(dfmode2[ , chars], 2, as.numeric))
+str(df2)
+```
+```{r}
+rm(policy_df, policy_df0, policy_dfmode)
+rm(val, my_mode)
 ```
 
 ```{r}
@@ -221,6 +265,11 @@ str(df2)
 df2 <- df2[df2$policycost >= 0, ]
 df2 <- df2[df2$federalpolicyfee >= 0, ]
 df2 <- df2[df2$totalinsurancepremiumofthepolicy >= 0, ]
+
+# repeat for dfmode2
+dfmode2 <- dfmode2[dfmode2$policycost >= 0, ]
+dfmode2 <- dfmode2[dfmode2$federalpolicyfee >= 0, ]
+dfmode2 <- dfmode2[dfmode2$totalinsurancepremiumofthepolicy >= 0, ]
 ```
 
 # Examine the response variable (totalinsurancepremiumofthepolicy)
@@ -258,6 +307,7 @@ dev.off ()
 # As the number of totalinsurancepremiumofthepolicy > 3000 is only 0.1% then we remove all rows with the value higher than 5000 to eleminate error
 
 df2 <- df2[(df2$totalinsurancepremiumofthepolicy < 3000),]
+dfmode2 <- dfmode2[(dfmode2$totalinsurancepremiumofthepolicy < 3000),]
 
 ```
 ```{r}
@@ -290,13 +340,15 @@ dev.off ()
 ```
 ```{r}
 # Number of NA values in each column
-colSums(is.na(policy_df))
+colSums(is.na(df2))
 ```
 
 
 ```{r}
-# Exporting the dataframe to clean folder
-file_path2 <- "../02_CleanData/policy_clean.parquet"
-write_parquet(df2, file_path2)
+# Exporting the dataframes to clean folder
+imputingwith0 <- "../02_CleanData/policy_clean_0imputed.parquet"
+imputingwithmode <- "../02_CleanData/policy_clean_modeimputed.parquet"
+write_parquet(df2,imputingwith0)
+write_parquet(dfmode2, imputingwithmode)
 ```
 
