@@ -259,15 +259,15 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients decreasing to zero, in this case we will remove variable "lowerflooronly"
+# From the Lasso Regression models, we can discard the variables with coeeficients decreasing to zero, in this case we will remove variable "construction"
 
 ```{r}
-df_num = subset(df_num,select=-c(lowerflooronly)) 
+df_num = subset(df_num,select=-c(construction)) 
 View(df_num)
 ```
 
 ```{r}
-for (col in c('construction', 'elevatedbuildingindicator', 'numberoffloorsininsuredbuilding', 'postfirmconstructionindicator', 'primaryresidenceindicator', 'upperandlowerfloors', 'basementandabove','morethan1floor')) {
+for (col in c('lowerflooronly', 'elevatedbuildingindicator', 'numberoffloorsininsuredbuilding', 'postfirmconstructionindicator', 'primaryresidenceindicator', 'upperandlowerfloors', 'basementandabove','morethan1floor')) {
   plot <- ggplot(data = df_num,
                  aes_string(x = col, y = 'totalinsurancepremiumofthepolicy', group = col, fill = col)) + 
             geom_boxplot(show.legend = FALSE) + 
