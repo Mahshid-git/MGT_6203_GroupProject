@@ -237,7 +237,7 @@ dfmode1$floodzone_undetermined <- ifelse( (startsWith(dfmode1$floodzone, 'D')) ,
 
 ```{r}
 #identify all character columns
-df2 <- subset(df1, select = -c(floodzone))
+df2 <- subset(df1, select = -c(floodzone, policycost))
 # ratemethod should also be categorical; 1 - Manual 2 - Specific 3 - Alternative 4 - V-Zone Risk Factor Rating Form 5 - Underinsured Condominium Master Policy 6 - Provisional 7 - Preferred Risk Policy (PRPs issued for eligible properties located within a non-Special Flood Hazard Area [non-SFHA]) 8 - Tentative 9 - MPPP Policy 
 
 chars <- sapply(df2, is.character)
@@ -248,7 +248,7 @@ str(df2)
 
 #repeat for dfmode
 #identify all character columns
-dfmode2 <- subset(dfmode1, select = -c(floodzone))
+dfmode2 <- subset(dfmode1, select = -c(floodzone, policycost))
 #convert all character columns to numeric
 dfmode2[ , chars] <- as.data.frame(apply(dfmode2[ , chars], 2, as.numeric))
 str(df2)
@@ -260,12 +260,10 @@ rm(val, my_mode)
 
 ```{r}
 # Remove negative value
-df2 <- df2[df2$policycost >= 0, ]
 df2 <- df2[df2$federalpolicyfee >= 0, ]
 df2 <- df2[df2$totalinsurancepremiumofthepolicy >= 0, ]
 
 # repeat for dfmode2
-dfmode2 <- dfmode2[dfmode2$policycost >= 0, ]
 dfmode2 <- dfmode2[dfmode2$federalpolicyfee >= 0, ]
 dfmode2 <- dfmode2[dfmode2$totalinsurancepremiumofthepolicy >= 0, ]
 ```
@@ -308,6 +306,8 @@ df2 <- df2[(df2$totalinsurancepremiumofthepolicy < 3000),]
 dfmode2 <- dfmode2[(dfmode2$totalinsurancepremiumofthepolicy < 3000),]
 
 ```
+
+
 ```{r}
 ggplot(df2, aes(x = totalinsurancepremiumofthepolicy, fill = cut(x=totalinsurancepremiumofthepolicy, 100))) +
   geom_histogram(show.legend = FALSE) +
