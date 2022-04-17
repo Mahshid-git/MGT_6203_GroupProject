@@ -44,47 +44,17 @@ library(pls)
 
 
 ```{r}
-file_path <- "../03_EDA/df_final.parquet"
+file_path <- "../04_Modeling/df_num_impute0.parquet"
 df1 <- read_parquet(file_path, as_tibble = TRUE)
-#View(df1)
+View(df1)
 ```
 
-# as construction (1), elevatedbuildingindicator (17), occupancytype(1),floodzone_highrisk (5),basementenclosurecrawlspacetype(52), lowerlevelcondo(1),numberoffloorsininsuredbuilding(13), originalconstructiondate(1481) have small number of NA value, I will remove all these rows
+### Note: should scale numeric data before doing analysis. This file exclude 2 columns of "date" 
 
 ```{r}
-df1 <- df1[!is.na(df1$basementenclosurecrawlspacetype), ]
-df1 <- df1[!is.na(df1$construction), ]
-df1 <- df1[!is.na(df1$elevatedbuildingindicator), ]
-df1 <- df1[!is.na(df1$occupancytype), ]
-df1 <- df1[!is.na(df1$lowerlevelcondo), ]
-df1 <- df1[!is.na(df1$originalconstructiondate), ]
-df1 <- df1[!is.na(df1$floodzone_highrisk), ]
+df = as.data.frame(scale(df1[,c(3,4,5,7,8,9,10,14,15)])) # standardize all numerical variables
 
-```
-
-
-```{r}
-apply(is.na(df1), 2, sum)
-```
-## There are large number of NA values in deductibleamountincontentscoverage, longtitude, latitude, and basementandabove 
-
-```{r}
-pairs(df1[c("construction", "lowerlevelcondo", "totalbuildinginsurancecoverage")])
-```
-
-
-
-```{r}
-unique(df1[c("deductibleamountincontentscoverage")])
-```
-
-### Note: should scale numeric data before doing analysis. I exclude 4 columns of "date" (9,10,12,13)
-
-```{r}
-df = as.data.frame(scale(df1[,c(3,6,7,15,16)])) # standardize all numerical variables
-
-df = as.data.frame(scale(df1[,c(3,6,7,15,16)]))
-df <- cbind(df1[,c(1,2,4,5,8,11,14,18,19,20)],df,df1[,17]) # Add categorical columns  back in
+df <- cbind(df1[,c(1,2,6,11,12,13,17,18,19)],df,df1[,16]) # Add categorical columns  back in
 
 View(df)
 ```
@@ -134,7 +104,7 @@ MSE <- function(pred){
 
 ```{r}
 
-lm_model = lm(totalinsurancepremiumofthepolicy ~., data = train, na.action = na.exclude)
+lm_model = lm(totalinsurancepremiumofthepolicy ~., data = train)
 summary(lm_model)
 ```
 
@@ -156,7 +126,7 @@ dev.off ()
 
 
 ```{r}
-lm_pred <- predict(lm_model, test, na.action = na.exclude)
+lm_pred <- predict(lm_model, test)
 
 ```
 
@@ -197,19 +167,9 @@ library(devtools)
 require(ggbiplot)
 ```
 
-```{r}
-#Remove all NA for PCA
-
-row.has.na <- apply(df, 1, function(x){any(is.na(x))})
-sum(row.has.na)
-df_filter <- df[!row.has.na,]
-
-apply(is.na(df_filter), 2, sum)
-```
-
 
 ```{r}
-PCA <- prcomp(df_filter[,1:15], scale = TRUE)  # apply PCA
+PCA <- prcomp(df[,1:18], scale = TRUE)  # apply PCA
 
 summary(PCA)
 ```
@@ -238,16 +198,16 @@ dev.off ()
 ```{r}
 R2 <- data.frame(n_PCA = numeric(), R2_PCA = numeric(), R2_cross_val = numeric()) #create a vector to store the R-squared values
 
-for (i in 1:15) {
+for (i in 1:18) {
   pc <- PCA$x[,1:i]  # use some i principal components from 4 to 10
-  pc_data <- cbind(df_filter[,16], pc)  # create data set
+  pc_data <- cbind(df[,19], pc)  # create data set
   
   model <- lm(V1~.,data = as.data.frame(pc_data)) # fit model
-  R2_PCA <- 1 - sum(model$residuals^2)/sum((df_filter$totalinsurancepremiumofthepolicy -        mean(df_filter$totalinsurancepremiumofthepolicy))^2) # calculate R-squared for PCA model
+  R2_PCA <- 1 - sum(model$residuals^2)/sum((df$totalinsurancepremiumofthepolicy -        mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared for PCA model
 
   
   cross_val <- cv.lm(as.data.frame(pc_data), model, m=5) # cross-validate 
-  R2_cross_val <- 1 - attr(cross_val,"ms")*nrow(df_filter)/sum((df_filter$totalinsurancepremiumofthepolicy - mean(df_filter$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
+  R2_cross_val <- 1 - attr(cross_val,"ms")*nrow(df)/sum((df_filter$totalinsurancepremiumofthepolicy - mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
   
   R2[nrow(R2)+1,]<- c(i, R2_PCA, R2_cross_val)
  }
