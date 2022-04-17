@@ -49,12 +49,12 @@ policy_df = subset(policy_df,select=-c(agriculturestructureindicator, propertyst
 colSums(is.na(policy_df))
 ```
 
-## Continue fiter some columns with large number of NA
+## Continue fiter some columns with large number of NA (over 60%) and irrelevant variables
 
 ```{r}
 # Filter more columns with significant number of NA values
 policy_df = subset(policy_df,select=-c(basefloodelevation,cancellationdateoffloodpolicy, countycode, elevationcertificateindicator, lowestadjacentgrade, lowestfloorelevation, obstructiontype))                          
-#View(policy_df)
+View(policy_df)
 ```
 
 ```{r}
@@ -73,15 +73,26 @@ count_unique
 ## condominiumindicator (6), construction (3), elevatedbuildingindicator(3), floodzone (33), locationofcontents (7), postfirmconstructionindicator (3), primaryresidenceindicator (3)
 ```{r}
 # condominiumindicator variables
-
 unique(policy_df$condominiumindicator)
-unique(policy_df$locationofcontents)
 
 ```
+
 ```{r}
-#condominum indicator for lower level and upper level condo
-policy_df$lowerlevelcondo=ifelse(policy_df$condominiumindicator=='L',1,0)
-policy_df$upperlevelcondo=ifelse(policy_df$condominiumindicator=='U',1,0)
+unique(policy_df$locationofcontents)
+```
+
+
+```{r}
+unique(policy_df$construction)
+unique(policy_df$elevatedbuildingindicator)
+unique(policy_df$postfirmconstructionindicator)
+unique(policy_df$primaryresidenceindicator)
+```
+
+```{r}
+#condominum indicator for what type of condominium, 95% for not a condominium (N), 3% for U and 3% for other
+policy_df$not_condo=ifelse(policy_df$condominiumindicator=='N',1,0)
+policy_df$u_condo=ifelse(policy_df$condominiumindicator=='U',1,0)
 
 # Construction
 policy_df$construction=ifelse(policy_df$construction=='Y',1,0)
@@ -90,7 +101,7 @@ policy_df$construction=ifelse(policy_df$construction=='Y',1,0)
 policy_df$elevatedbuildingindicator=ifelse(policy_df$elevatedbuildingindicator=='Y',1,0)
 
 
-#trying to factor the locationofcontents column ....feel free to advise anyother column names. 
+#Factor the locationofcontents column 
 policy_df$lowerflooronly=ifelse(policy_df$locationofcontents=='Lowest floor only above ground level (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
 policy_df$upperandlowerfloors=ifelse(policy_df$locationofcontents=='Lowest floor above ground level and higher floors (No basement/enclosure/crawlspace/subgrade crawlspace)',1,0)
 policy_df$basementandabove=ifelse(policy_df$locationofcontents=='Basement/Enclosure/Crawlspace/Subgrade Crawlspace and above',1,0)
@@ -105,12 +116,16 @@ policy_df$postfirmconstructionindicator=ifelse(policy_df$postfirmconstructionind
 policy_df$primaryresidenceindicator=ifelse(policy_df$primaryresidenceindicator=='Y',1,0)
 ```
 
+```{r}
+View(policy_df)
+```
+
 
 ```{r}
-# Continue remove category variables
+# Continue remove category variables which have been replaced as above
 
-df = subset(policy_df,select=-c(condominiumindicator, locationofcontents))
-#View(df)
+df = subset(policy_df,select=-c(condominiumindicator, construction, elevatedbuildingindicator, locationofcontents, postfirmconstructionindicator, primaryresidenceindicator))
+View(df)
 ```
 
 
