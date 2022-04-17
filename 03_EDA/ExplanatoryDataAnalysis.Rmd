@@ -167,9 +167,12 @@ lmFit_Step <- train(totalinsurancepremiumofthepolicy ~ ., data = scaledData, "lm
 
 
 ```{r}
-mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype + construction +   deductibleamountincontentscoverage + elevatedbuildingindicator + occupancytype + policycount + 
-    lowerlevelcondo + basementandabove + floodzone_highrisk + 
-    crsdiscount + latitude + longitude + totalbuildinginsurancecoverage + 
+mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype + construction + elevatedbuildingindicator + 
+    postfirmconstructionindicator + primaryresidenceindicator + 
+    lowerflooronly + upperandlowerfloors + basementandabove + 
+    morethan1floor + crsdiscount + deductibleamountinbuildingcoverage + 
+    deductibleamountincontentscoverage + latitude + longitude + 
+    numberoffloorsininsuredbuilding + policycount + totalbuildinginsurancecoverage + 
     totalcontentsinsurancecoverage,
     data = scaledData)
 summary(mod_Step)
