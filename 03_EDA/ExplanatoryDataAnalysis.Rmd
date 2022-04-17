@@ -31,18 +31,20 @@ library(corrplot)
 library(tidyr)
 ```
 
+# Examine policy_clean_0imputed first
 ```{r}
-file_path <- "../02_CleanData/policy_clean.parquet"
+file_path <- "../02_CleanData/policy_clean_0imputed.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
-#View(df)
+View(df)
 #head(df)
+str(df)
 ```
 #1 Explore 
 
 ```{r}
 # Select continuous variables for correlation examination
 # comment
-df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
+df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,deductibleamountinbuildingcoverage, deductibleamountincontentscoverage, federalpolicyfee, latitude, longitude, policycost, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
 
 ```
 
@@ -97,6 +99,7 @@ df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
 dim(df_clean)
 View(df_clean)
 ```
+# Run linear regression
 
 ```{r}
 fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
@@ -106,8 +109,20 @@ summary(fit)
 ## from the output, we can remove some insignificant variables
 
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -deductibleamountinbuildingcoverage -numberoffloorsininsuredbuilding -policytermindicator -postfirmconstructionindicator -reportedzipcode -lowerflooronly -upperlevelcondo -mobilehomeortrailer -floodzone_modrisk -floodzone_undetermined    -upperandlowerfloors -basementonly -morethan1floor, df_clean)
+fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -occupancytype -policytermindicator -reportedzipcode -basementonly -mobilehomeortrailer -floodzone_highrisk -floodzone_modrisk -floodzone_undetermined, df_clean)
 summary(fit1)
+```
+```{r}
+vif(fit1)
+```
+```{r}
+# Multicollinearity
+# Check the variables of highly correlated
+
+highly_corelated = findCorrelation(cormat, cutoff = 0.6)
+
+highlyCor_Col = colnames(df_num)[highly_corelated]
+highlyCor_Col
 ```
 
 ## Create the final dataset for further analysis (remove policycost as it = premium =admin fee)
