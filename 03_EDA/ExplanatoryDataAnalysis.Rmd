@@ -263,7 +263,7 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 
 ```{r}
 df_num = subset(df_num,select=-c(construction)) 
-View(df_num)
+#View(df_num)
 ```
 
 ```{r}
