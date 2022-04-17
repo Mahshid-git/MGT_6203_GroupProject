@@ -35,10 +35,12 @@ library(tidyr)
 ```{r}
 file_path <- "../02_CleanData/policy_clean_0imputed.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
-View(df)
+#View(df)
 #head(df)
-str(df)
+#str(df)
 ```
+
+
 #1 Explore 
 
 ```{r}
@@ -127,7 +129,21 @@ View(df_final)
 ```
 
 ```{r}
-str(df_final)
+# count NA values in each column
+colSums(is.na(df_final))
+
+```
+
+# remove all the rows with NA values (22458 rows ~ 1% of dataset)
+```{r}
+row.has.na <- apply(df_final, 1, function(x){any(is.na(x))})
+sum(row.has.na)
+df_final_filtered <- df_final[!row.has.na,]
+```
+```{r}
+# count NA values in each column
+colSums(is.na(df_final_filtered))
+
 ```
 
 
@@ -135,7 +151,7 @@ str(df_final)
 # Select only numerical columns for data analysist (leave data type in df_final)
 # df_num includes 21 variables
 
-df_num <- subset(df_final, select = -c(originalconstructiondate, originalnbdate))
+df_num <- subset(df_final_filtered, select = -c(originalconstructiondate, originalnbdate))
 
 View(df_num)
 ```
@@ -144,7 +160,6 @@ View(df_num)
 # categorical columns
 df_cat <- subset(df_num, select = c(basementenclosurecrawlspacetype, construction, elevatedbuildingindicator, postfirmconstructionindicator, primaryresidenceindicator, lowerflooronly, upperandlowerfloors, basementandabove, morethan1floor))
 lapply(df_cat, unique)
-
 ```
 
 1. Stepwise regression
@@ -155,6 +170,8 @@ scaledData <- cbind(df_num[,c(1,2,6,12,13,17,18,19,20)],scaledData,df_num[,16]) 
 
 colnames(scaledData)[16] <- "totalinsurancepremiumofthepolicy"
 ```
+
+
 
 ```{r}
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
@@ -178,17 +195,18 @@ mod_Step = lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype
 summary(mod_Step)
 ```
 
+## LASSO
 ```{r}
 ## Variable selections using Lasso
 
-train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
+train_con <- trainControl(method = 'cv', number = 2) # using 5 folds cv
 
 lasso <- train(totalinsurancepremiumofthepolicy ~., scaledData,
                method = 'lasso',
                preProc = c('scale', 'center'),
-               trControl = train_con,
-              na.action=na.exclude)
-lasso
+               trControl = train_con
+              )
+#lasso
 ```
 
 ```{r}
@@ -199,7 +217,33 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, but lookx like we should kep all. # so the totalinsurancepremiumofthepolicy will have 15 variables and 4 date variables
+# From the Lasso Regression models, we can discard the variables with coeeficients near to zero, but look like we should kep all. # so the totalinsurancepremiumofthepolicy will have 17 variables and 2 date variables
+
+
+
+
+##chi-square test is a statistical test of independence
+##calculate chi-square statistics between every feature variable and 
+#the target variable
+
+##observe the existence of a relationship between the variables 
+#and the target
+##target variable is independent of the feature variable, 
+#we can discard that feature variable
+
+```{r}
+weights = chi.squared(totalinsurancepremiumofthepolicy ~ ., df_num)
+#weights of discrete attributes basing on a chi-squared test
+print(weights)
+subset = cutoff.k(weights, 5) #a cut-off above which we retain predictors
+f = as.simple.formula(subset, "totalinsurancepremiumofthepolicy")
+print(f)
+```
+
+
+
+
+
 
 ```{r}
 #rerun to check if there is still in-significant variables. Look like the dataset is good to go now
@@ -207,13 +251,15 @@ fit2 = lm(totalinsurancepremiumofthepolicy ~. , df_num)
 
 summary(fit2)
 ```
+
+
 ```{r}
 
 # Exporting the dataframe to clean folder
 
 # df_final includes numeric (df_num) and 4 "date" columns
 
-file_path3 <- "../03_EDA/df_final.parquet"
+file_path3 <- "../03_EDA/df_final_filtered.parquet"
 write_parquet(df_final, file_path3)
 
 # df_num includes only numeric variables for analysis
