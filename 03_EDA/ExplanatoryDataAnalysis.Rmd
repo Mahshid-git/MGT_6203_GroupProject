@@ -31,7 +31,8 @@ library(corrplot)
 library(tidyr)
 ```
 
-# Examine policy_clean_0imputed first
+# EXAMINE POLICY_CLEAN_0IMPUTE first
+
 ```{r}
 file_path <- "../02_CleanData/policy_clean_0imputed.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
