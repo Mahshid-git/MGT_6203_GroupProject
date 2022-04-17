@@ -125,7 +125,7 @@ vif(fit1)
 ## Create the final dataset for further analysis 
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract, policytermindicator, basementonly, mobilehomeortrailer, floodzone_highrisk, floodzone_modrisk, floodzone_undetermined, policyterminationdate, not_condo, u_condo, policyeffectivedate, crsdiscount))
+df_final <- subset(df_clean, select = -c(censustract, policytermindicator, basementonly, mobilehomeortrailer, floodzone_highrisk, floodzone_modrisk, floodzone_undetermined, policyterminationdate, not_condo, u_condo, policyeffectivedate, crsdiscount, elevationdifference))
 
 #View(df_final)
 ```
@@ -151,7 +151,7 @@ colSums(is.na(df_final_filtered))
 
 ```{r}
 # Select only numerical columns for data analysist (leave data type in df_final_filtered)
-# df_num includes 21 variables
+# df_num includes 20 variables
 
 df_num <- subset(df_final_filtered, select = -c(originalconstructiondate, originalnbdate))
 
@@ -161,15 +161,15 @@ df_num <- subset(df_final_filtered, select = -c(originalconstructiondate, origin
 
 ```{r}
 
-# Exporting the dataframe to clean folder
+# Exporting the dataframe to EDA folder
 
 # df_final_NoNA includes numeric (df_num) and 2 "date" columns
 
-file_path3 <- "../03_EDA/df_final_NoNA.parquet"
+file_path3 <- "../03_EDA/df_final_0impute.parquet"
 write_parquet(df_final_filtered, file_path3)
 
 # df_num includes only numeric variables for analysis
-file_path4 <- "../03_EDA/df_num.parquet"
+file_path4 <- "../03_EDA/df_num_0impute.parquet"
 write_parquet(df_num, file_path4)
 
 ```
@@ -177,12 +177,11 @@ write_parquet(df_num, file_path4)
 
 # Import data again to avoid run all above commands
 ```{r}
-file_path <- "../03_EDA/df_num.parquet"
+file_path <- "../03_EDA/df_num_0impute.parquet"
 df_num <- read_parquet(file_path, as_tibble = TRUE)
 
-file_path <- "../03_EDA/df_final_NoNA.parquet"
+file_path <- "../03_EDA/df_final_0impute.parquet"
 df <- read_parquet(file_path, as_tibble = TRUE)
-
 
 ```
 # Rerun lm to check significant variables
@@ -208,8 +207,8 @@ View(df_num)
 
 
 ```{r}
-scaledData = as.data.frame(scale(df_num[,c(3,4,5,7,8,9,10,11,14,15)])) # standardize all numerical variables
-scaledData <- cbind(df_num[,c(1,2,6,12,13,17,18,19,20)],scaledData,df_num[,16]) # Add categorical columns  back in
+scaledData = as.data.frame(scale(df_num[,c(3,4,6,7,13,14,15)])) # standardize all numerical variables
+scaledData <- cbind(df_num[,c(1,2,5,8,9,10,11,12,17,18,19,20)],scaledData,df_num[,16]) # Add categorical columns  back in
 
 colnames(scaledData)[16] <- "totalinsurancepremiumofthepolicy"
 ```
