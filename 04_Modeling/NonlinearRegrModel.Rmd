@@ -1,0 +1,442 @@
+---
+title: "Untitled"
+author: "Anh Tran"
+date: "4/3/2022"
+output: html_document
+---
+# This part will involve all classification models
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Remove previous data from environment
+rm(list = ls())
+```
+
+```{r include=FALSE}
+if (!require("sjPlot")) install.packages("sjPlot")
+if (!require("tidyverse")) install.packages("sjPlot")
+
+library(arrow) # needed to read parquet file
+library(plyr)
+library(dplyr)
+library(car)
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(rpart)
+library(ggplot2)
+library(corrplot)
+library(sjPlot)
+library(gridExtra)
+library(tidyverse)
+library(rsample)
+library(randomForest)
+library(janitor)
+library(glmnet)
+library(tree)
+library(RColorBrewer)
+library(gridExtra)
+library(pls)
+```
+
+
+```{r}
+file_path <- "../04_Modeling/df_num_impute0.parquet"
+df1 <- read_parquet(file_path, as_tibble = TRUE)
+View(df1)
+```
+
+### Note: should scale numeric data before doing analysis. This file exclude 2 columns of "date" 
+
+```{r}
+df = as.data.frame(scale(df1[,c(3,4,5,7,8,9,10,14,15)])) # standardize all numerical variables
+
+df <- cbind(df1[,c(1,2,6,11,12,13,17,18,19)],df,df1[,16]) # Add categorical columns  back in
+df <- subset(df, select=-c(policycost))
+#View(df)
+```
+
+```{r}
+set.seed(100)
+
+size <- floor(0.7*nrow(df))
+train_ind <- sample(seq_len(nrow(df)), size = size)
+
+train <- df[train_ind, ]
+test <- df[-train_ind, ]
+```
+
+```{r}
+# regressing each feature against y variable
+mod1 <- lm(totalinsurancepremiumofthepolicy ~ ., data = train)
+print(summary(mod1)$adj.r.squared)
+
+modlog <- lm(log(totalinsurancepremiumofthepolicy+1) ~ ., data = train) # n]improved from 0.365 to 0.41
+print(summary(modlog)$adj.r.squared)
+```
+```{r}
+# make a list of all features
+col_list <- colnames(df)
+col_list <- col_list[col_list != "totalinsurancepremiumofthepolicy"]
+col_list
+```
+
+```{r}
+# for each feature compare adjusted R2 for log transformation; it will print the features whose log transformation increases adjusted R2
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ basementenclosurecrawlspacetype, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(basementenclosurecrawlspacetype+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementenclosurecrawlspacetype")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ elevatedbuildingindicator, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(elevatedbuildingindicator+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("elevatedbuildingindicator")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ postfirmconstructionindicator, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(postfirmconstructionindicator+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("postfirmconstructionindicator")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ upperandlowerfloors, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(upperandlowerfloors+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("upperandlowerfloors")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ morethan1floor, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(morethan1floor+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("morethan1floor")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ deductibleamountinbuildingcoverage, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(deductibleamountinbuildingcoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("deductibleamountinbuildingcoverage")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ latitude, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(latitude+abs(min(train$latitude))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("latitude")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ numberoffloorsininsuredbuilding, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(numberoffloorsininsuredbuilding+abs(min(train$numberoffloorsininsuredbuilding))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("numberoffloorsininsuredbuilding")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ totalcontentsinsurancecoverage, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(totalcontentsinsurancecoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("totalcontentsinsurancecoverage")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ construction, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(construction+abs(min(train$construction))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("construction")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ policycount, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(policycount+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("policycount")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ primaryresidenceindicator, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(primaryresidenceindicator+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("primaryresidenceindicator")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ basementandabove, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(basementandabove+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementandabove")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ crsdiscount, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(crsdiscount+abs(min(train$crsdiscount))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("crsdiscount")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ deductibleamountincontentscoverage, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(deductibleamountincontentscoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("deductibleamountincontentscoverage")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ longitude, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(longitude+abs(min(train$longitude))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("longitude")
+}
+
+mod_lin <- lm(totalinsurancepremiumofthepolicy ~ totalbuildinginsurancecoverage, 
+              data = df)
+mod_log <- lm(totalinsurancepremiumofthepolicy ~ log(totalbuildinginsurancecoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("totalbuildinginsurancecoverage")
+}
+```
+```{r}
+mod2 <- lm(totalinsurancepremiumofthepolicy ~ log(basementenclosurecrawlspacetype+1) +
+             log(construction + abs(min(train$construction))+1) + elevatedbuildingindicator +
+             log(policycount+1) + postfirmconstructionindicator +
+             log(primaryresidenceindicator+1) + upperandlowerfloors + basementandabove + morethan1floor +
+             log(crsdiscount+1) + deductibleamountinbuildingcoverage + log(deductibleamountincontentscoverage+1) +
+             latitude + longitude + log(numberoffloorsininsuredbuilding+1) + totalbuildinginsurancecoverage +
+             totalcontentsinsurancecoverage,
+             data = train)
+print(summary(mod2)$adj.r.squared) # improved from 0.365 to 0.41
+```
+```{r}
+s(abmin(train$latitude))+1
+```
+
+```{r}
+# try log of y
+mod3 <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementenclosurecrawlspacetype+1) +
+             construction + elevatedbuildingindicator + log(policycount+1) + postfirmconstructionindicator +
+             log(primaryresidenceindicator+1) + upperandlowerfloors + basementandabove + morethan1floor +
+             log(crsdiscount+1) + deductibleamountinbuildingcoverage + log(deductibleamountincontentscoverage+1) +
+             latitude + longitude + log(numberoffloorsininsuredbuilding+1) + totalbuildinginsurancecoverage +
+             totalcontentsinsurancecoverage,
+             data = train)
+print(summary(mod3)$adj.r.squared) # improved from 0.41 to 0.46
+```
+
+```{r}
+# Do the same but for log(y+1):
+# for each feature compare adjusted R2 for log transformation; it will print the features whose log transformation increases adjusted R2
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ basementenclosurecrawlspacetype, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementenclosurecrawlspacetype+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementenclosurecrawlspacetype")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ elevatedbuildingindicator, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(elevatedbuildingindicator+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("elevatedbuildingindicator")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ postfirmconstructionindicator, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(postfirmconstructionindicator+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("postfirmconstructionindicator")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ upperandlowerfloors, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(upperandlowerfloors+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("upperandlowerfloors")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ morethan1floor, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(morethan1floor+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("morethan1floor")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ deductibleamountinbuildingcoverage, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(deductibleamountinbuildingcoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("deductibleamountinbuildingcoverage")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ latitude, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(latitude+abs(min(train$latitude))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("latitude")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ numberoffloorsininsuredbuilding, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(numberoffloorsininsuredbuilding+abs(min(train$numberoffloorsininsuredbuilding))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("numberoffloorsininsuredbuilding")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ totalcontentsinsurancecoverage, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(totalcontentsinsurancecoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("totalcontentsinsurancecoverage")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ construction, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(construction+abs(min(train$construction))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("construction")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ policycount, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(policycount+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("policycount")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ primaryresidenceindicator, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(primaryresidenceindicator+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("primaryresidenceindicator")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ basementandabove, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementandabove+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementandabove")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ crsdiscount, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(crsdiscount+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("crsdiscount")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ deductibleamountincontentscoverage, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(deductibleamountincontentscoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("deductibleamountincontentscoverage")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ longitude, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(longitude+abs(min(train$longitude))+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("longitude")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ totalbuildinginsurancecoverage, 
+              data = df)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(totalbuildinginsurancecoverage+1), 
+              data = train)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("totalbuildinginsurancecoverage")
+}
+```
+
+
+```{r}
+mod4 <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementenclosurecrawlspacetype+1) +
+             log(construction+abs(min(train$construction))+1) + 
+             log(elevatedbuildingindicator+1) + log(policycount+1) + postfirmconstructionindicator +
+             log(primaryresidenceindicator+1) + upperandlowerfloors + basementandabove + log(morethan1floor+1) +
+             log(crsdiscount+abs(min(train$crsdiscount))+1) + log(deductibleamountinbuildingcoverage+1) +
+             deductibleamountincontentscoverage + latitude + longitude +
+             log(numberoffloorsininsuredbuilding+abs(min(train$numberoffloorsininsuredbuilding))+1) +
+             totalbuildinginsurancecoverage + totalcontentsinsurancecoverage,
+             data = train)
+print(summary(mod4)$adj.r.squared) # improved from 0.41 to 0.461
+```
+# Function used to compute r squared and mean squared error
+
+```{r}
+rsquared <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
+    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy-pred)^2)/sum((test$totalinsurancepremiumofthepolicy-mean(test$totalinsurancepremiumofthepolicy))^2))
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
+    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy-pred)^2)/sum((train$totalinsurancepremiumofthepolicy-mean(train$totalinsurancepremiumofthepolicy))^2))
+  }
+  return (r2)
+}
+
+
+MSE <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
+    mse = sum((test$totalinsurancepremiumofthepolicy-pred)^2)/length(test$totalinsurancepremiumofthepolicy)
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
+    mse = sum((train$totalinsurancepremiumofthepolicy-pred)^2)/length(train$totalinsurancepremiumofthepolicy)
+  }
+  return (mse)
+}
+```
+
+# checking on test  (same R2)
+```{r}
+test.pred <- predict(mod4,newdata=test)
+test.y  <- log(test$totalinsurancepremiumofthepolicy+1)
+SS.total  <- sum((test.y - mean(test.y))^2)
+SS.residual   <- sum((test.y - test.pred)^2)
+SS.regression <- sum((test.pred - mean(test.y))^2)
+SS.total - (SS.regression+SS.residual)
+test.rsq <- 1 - SS.residual/SS.total  
+test.rsq
+```
