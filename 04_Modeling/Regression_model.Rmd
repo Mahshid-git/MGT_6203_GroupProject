@@ -46,7 +46,7 @@ library(pls)
 ```{r}
 file_path <- "../04_Modeling/df_num_impute0.parquet"
 df1 <- read_parquet(file_path, as_tibble = TRUE)
-View(df1)
+#View(df1)
 ```
 
 ### Note:  This file exclude 2 columns of "date" 
@@ -56,7 +56,7 @@ df = as.data.frame(df1[,c(2,3,5,6,12,13,14)]) # standardize all numerical variab
 
 df <- cbind(df1[,c(1,4,7,8,9,10,11,16,17,18,19)],df,df1[,15]) # Add categorical columns  back in
 
-View(df)
+#View(df)
 ```
 
 ```{r}
@@ -237,8 +237,9 @@ r2.bag.test <- rsquared(pred.bag.test)
 
 
 
-# Bossting
+# Boosting
 ```{r}
+library(gbm)
 set.seed(100)
 boost.model <- gbm(totalinsurancepremiumofthepolicy ~., data = train, distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
 
