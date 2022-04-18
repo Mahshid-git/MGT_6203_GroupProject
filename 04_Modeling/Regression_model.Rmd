@@ -52,9 +52,9 @@ View(df1)
 ### Note: should scale numeric data before doing analysis. This file exclude 2 columns of "date" 
 
 ```{r}
-df = as.data.frame(scale(df1[,c(3,4,5,7,8,9,10,14,15)])) # standardize all numerical variables
+df = as.data.frame(scale(df1[,c(2,3,5,6,12,13,14)])) # standardize all numerical variables
 
-df <- cbind(df1[,c(1,2,6,11,12,13,17,18,19)],df,df1[,16]) # Add categorical columns  back in
+df <- cbind(df1[,c(1,4,7,8,9,10,11,16,17,18,19)],df,df1[,15]) # Add categorical columns  back in
 
 View(df)
 ```
