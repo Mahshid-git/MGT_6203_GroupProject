@@ -52,15 +52,12 @@ View(df1)
 ### Note: should scale numeric data before doing analysis. This file exclude 2 columns of "date" 
 
 ```{r}
-df = as.data.frame(scale(df1[,c(2,3,5,6,12,13,14)])) # standardize all numerical variables
+df = as.data.frame(df1[,c(2,3,5,6,12,13,14)]) # standardize all numerical variables
 
 df <- cbind(df1[,c(1,4,7,8,9,10,11,16,17,18,19)],df,df1[,15]) # Add categorical columns  back in
 
 View(df)
 ```
-
-
-
 
 
 # Splitting data to 70% training, 30% testing
@@ -75,7 +72,7 @@ train <- df[train_ind, ]
 test <- df[-train_ind, ]
 ```
 
-# Function used to compute r squared and mean squared error
+#1
 
 ```{r}
 rsquared <- function(pred){
@@ -99,6 +96,49 @@ MSE <- function(pred){
   return (mse)
 }
 ```
+
+
+```{r}
+linear.bwd <- step(lm(totalinsurancepremiumofthepolicy ~., data= train), direction = c("backward"))
+
+bwd.pred.train = predict(linear.bwd, train)
+mse.bwd.train = MSE(bwd.pred.train)
+r2.bwd.train = rsquared(bwd.pred.train)
+
+bwd.pred.test = predict(linear.bwd, test)
+mse.bwd.test = MSE(bwd.pred.test)
+r2.bwd.test = rsquared(bwd.pred.test)
+```
+
+```{r}
+summary(linear.bwd)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #1. Linear Regression
 
@@ -166,6 +206,39 @@ library(GGally)
 library(devtools)
 require(ggbiplot)
 ```
+```{r}
+pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data = train, scale = TRUE, validation = "CV")
+validationplot(pcr.model, val.type="MSEP", main = "totalinsurancepremiumofthepolicy", ylab = "Mean Squared Error")
+```
+
+
+
+```{r}
+summary(pcr.model)
+```
+
+
+```{r}
+pcr.pred5.train = predict(pcr.model, train, ncomp = 5)
+mse.pcr5.train = MSE(pcr.pred5.train)
+r2.pcr5.train = rsquared(pcr.pred5.train)
+
+pcr.pred5.test = predict(pcr.model, test, ncomp = 5)
+mse.pcr5.test = MSE(pcr.pred5.test)
+r2.pcr5.test = rsquared(pcr.pred5.test)
+
+pcr.pred9.train = predict(pcr.model, train, ncomp = 9)
+mse.pcr9.train = MSE(pcr.pred9.train)
+r2.pcr9.train = rsquared(pcr.pred9.train)
+
+pcr.pred9.test = predict(pcr.model, test, ncomp = 9)
+mse.pcr9.test = MSE(pcr.pred9.test)
+r2.pcr9.test = rsquared(pcr.pred9.test)
+
+```
+
+
+
 
 
 ```{r}
@@ -221,5 +294,56 @@ for (i in 1:18) {
 plot(R2$R2_cross_val, xlab = "Principal Component", ylab = "Cross-validated R-squared with this many principal components", x = R2$n_PCA, ylim =c(0,1),type = "b")
 ```
 
+
+## Lasso
+```{r}
+xtrain = model.matrix(totalinsurancepremiumofthepolicy ~.,train)[,-1]
+ytrain = train$totalinsurancepremiumofthepolicy
+xtest = model.matrix(totalinsurancepremiumofthepolicy ~.,test)[,-1]
+ytest = test$totalinsurancepremiumofthepolicy
+
+cv.lasso.out = cv.glmnet(xtrain, ytrain, alpha=1)
+bestlam.lasso = cv.lasso.out$lambda.min
+i <- which(cv.lasso.out$lambda == cv.lasso.out$lambda.min)
+mse.min.lasso <- cv.lasso.out$cvm[i]
+
+lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
+
+lasso.pred.train = predict(lasso.model, newx=xtrain)
+mse.lasso.train = MSE(lasso.pred.train)
+r2.lasso.train = rsquared(lasso.pred.train)
+
+lasso.pred.test = predict(lasso.model, newx=xtest)
+mse.lasso.test = MSE(lasso.pred.test)
+r2.lasso.test = rsquared(lasso.pred.test)
+```
+
+```{r}
+lasso_plot <- ggplot(mapping = aes(x=log(cv.lasso.out$lambda), y=cv.lasso.out$cvm)) +
+  geom_point() +
+  geom_point(aes(x=log(bestlam.lasso), y=mse.min.lasso, size = 2), show.legend = FALSE, color="red") +
+  geom_errorbar(aes(ymin=cv.lasso.out$cvm-cv.lasso.out$cvsd, ymax=cv.lasso.out$cvm+cv.lasso.out$cvsd), color="gray") +
+  xlab("Log(lambda)") +
+  ylab("Mean Squared Error") +
+  labs(title = "Optimal Lambda for Lasso Regression", subtitle = paste("Best Lambda: ", bestlam.lasso)) +
+  theme_classic()
+
+```
+
+```{r}
+lasso.coef <- rownames_to_column(data.frame(coef(lasso.model)[,1]), var = "Variable") %>%
+  rename(Coefficient = coef.lasso.model....1.)
+
+lasso.coef <- lasso.coef %>%
+  filter(Variable != "(Intercept)") %>%
+  arrange(desc(abs(Coefficient)))
+
+coef.compare <- lasso.coef %>%
+  left_join(ridge.coef, by = "Variable") %>%
+  rename("Lasso Coefficient" = Coefficient.x) %>%
+  rename("Ridge Coefficient" = Coefficient.y)
+
+coef.compare
+```
 
 
