@@ -278,20 +278,6 @@ for (col in c('lowerflooronly', 'elevatedbuildingindicator', 'numberoffloorsinin
 
 
 ```{r}
-for (feat in c('construction', 'elevatedbuildingindicator', 'numberoffloorsininsuredbuilding')) {
-  plot <- ggplot(data = df_num, aes_string(x = feat, y = 'totalinsurancepremiumofthepolicy', group = 'primaryresidenceindicator', fill = 'primaryresidenceindicator', col = 'primaryresidenceindicator')) + 
-    geom_jitter() + 
-    geom_smooth(method = 'lm') +
-    ggtitle(glue::glue("Charges vs {feat}"))  
-  print(plot)
-  dev.copy(jpeg, filename="{col}.jpg");
-  dev.off ()
-}
-```
-
-
-
-```{r}
 # Examine correlation between all numeric variables 
 cormat <-cor(df_num, use = "pairwise.complete.obs")
 ```
@@ -301,7 +287,7 @@ cormat <-cor(df_num, use = "pairwise.complete.obs")
 corrplot(cormat, tl.col = "red", tl.srt = 45, bg = "White",
          title = "\n\n Correlation Plot of Flood Data",
          type = "lower")
-dev.copy(jpeg, filename="Correlation Plot of Flood Data_NewData.jpg");
+dev.copy(jpeg, filename="Correlation Plot of Flood Data_0impute.jpg");
 dev.off ()
 ```
 
