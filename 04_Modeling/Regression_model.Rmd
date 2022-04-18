@@ -110,7 +110,7 @@ ytest = test$totalinsurancepremiumofthepolicy
 ```
 
 ```{r}
-grid = 10^seq(10, -2, length=100)
+grid = 10^seq(10, -2, length = 100)
 
 cv.ridge.out = cv.glmnet(xtrain, ytrain, alpha=0)
 bestlam.ridge = cv.ridge.out$lambda.min
@@ -132,7 +132,7 @@ r2.ridge.test = rsquared(ridge.pred.test)
 ## 2. Lasso
 ```{r}
 
-cv.lasso.out = cv.glmnet(xtrain, ytrain, alpha=1)
+cv.lasso.out = cv.glmnet(xtrain, ytrain, family = "gaussian", alpha = 1, nfolds = 5, type.measure = "mse")
 bestlam.lasso = cv.lasso.out$lambda.min
 i <- which(cv.lasso.out$lambda == cv.lasso.out$lambda.min)
 mse.min.lasso <- cv.lasso.out$cvm[i]
@@ -142,10 +142,12 @@ lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
 lasso.pred.train = predict(lasso.model, newx=xtrain)
 mse.lasso.train = MSE(lasso.pred.train)
 r2.lasso.train = rsquared(lasso.pred.train)
+r2.lasso.train 
 
 lasso.pred.test = predict(lasso.model, newx=xtest)
 mse.lasso.test = MSE(lasso.pred.test)
 r2.lasso.test = rsquared(lasso.pred.test)
+r2.lasso.test
 ```
 
 ```{r}
@@ -224,7 +226,7 @@ dev.off ()
 ```{r}
 set.seed(100)
 
-bag.model <- randomForest(totalinsurancepremiumofthepolicy ~., data = train, mtry = 10, importance = TRUE)
+bag.model <- randomForest(totalinsurancepremiumofthepolicy ~., data = train, mtry = 5, importance = TRUE)
 
 pred.bag.train <- predict(bag.model, train)
 mse.bag.train <- MSE(pred.bag.train)
@@ -245,7 +247,6 @@ boost.model <- gbm(totalinsurancepremiumofthepolicy ~., data = train, distributi
 
 pred.boost.train <- predict(boost.model, train)
 ```
-
 
 ```{r}
 mse.boost.train <- MSE(pred.boost.train)
@@ -310,13 +311,19 @@ bplot = ggbiplot(PCA,
 
 print(bplot)
 
-dev.copy(jpeg, filename="PCA_Plot.jpg")
-dev.off ()
+#dev.copy(jpeg, filename="PCA_Plot.jpg")
+#dev.off ()
 
 ```
 
 ```{r}
-pca.pred4 = predict(PCA, test[,1:18])
+PCA_4 <- cbind(df[,19], PCA$x[,1:5])
+modelPCA <- lm(V1~.,data = as.data.frame(PCA_4)) # fit model
+summary(modelPCA) # not a great adjusted R square value comparing to previous model with k-fold
+
+cross_valPCA <- cv.lm(as.data.frame(PCA_4), modelPCA, m=5) # cross-validate 
+R2_PCA<- 1 - attr(cross_valPCA,"ms")*nrow(df)/sum((df$totalinsurancepremiumofthepolicy - mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
+R2_PCA
 ```
 
 
