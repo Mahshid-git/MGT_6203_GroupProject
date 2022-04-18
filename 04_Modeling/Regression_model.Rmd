@@ -20,7 +20,7 @@ if (!require("sjPlot")) install.packages("sjPlot")
 if (!require("tidyverse")) install.packages("sjPlot")
 
 library(arrow) # needed to read parquet file
-library(plyr)
+
 library(dplyr)
 library(car)
 library(caret)
@@ -49,7 +49,7 @@ df1 <- read_parquet(file_path, as_tibble = TRUE)
 View(df1)
 ```
 
-### Note: should scale numeric data before doing analysis. This file exclude 2 columns of "date" 
+### Note:  This file exclude 2 columns of "date" 
 
 ```{r}
 df = as.data.frame(df1[,c(2,3,5,6,12,13,14)]) # standardize all numerical variables
@@ -57,6 +57,10 @@ df = as.data.frame(df1[,c(2,3,5,6,12,13,14)]) # standardize all numerical variab
 df <- cbind(df1[,c(1,4,7,8,9,10,11,16,17,18,19)],df,df1[,15]) # Add categorical columns  back in
 
 View(df)
+```
+
+```{r}
+summary(df$totalinsurancepremiumofthepolicy)
 ```
 
 
@@ -72,7 +76,7 @@ train <- df[train_ind, ]
 test <- df[-train_ind, ]
 ```
 
-#1
+#1. Linear Regression: Ridge and Lasso
 
 ```{r}
 rsquared <- function(pred){
@@ -97,104 +101,179 @@ MSE <- function(pred){
 }
 ```
 
-
+## 1. Ridge
 ```{r}
-linear.bwd <- step(lm(totalinsurancepremiumofthepolicy ~., data= train), direction = c("backward"))
-
-bwd.pred.train = predict(linear.bwd, train)
-mse.bwd.train = MSE(bwd.pred.train)
-r2.bwd.train = rsquared(bwd.pred.train)
-
-bwd.pred.test = predict(linear.bwd, test)
-mse.bwd.test = MSE(bwd.pred.test)
-r2.bwd.test = rsquared(bwd.pred.test)
+xtrain = model.matrix(totalinsurancepremiumofthepolicy ~.,train)[,-1]
+ytrain = train$totalinsurancepremiumofthepolicy
+xtest = model.matrix(totalinsurancepremiumofthepolicy ~.,test)[,-1]
+ytest = test$totalinsurancepremiumofthepolicy
 ```
 
 ```{r}
-summary(linear.bwd)
+grid = 10^seq(10, -2, length=100)
+
+cv.ridge.out = cv.glmnet(xtrain, ytrain, alpha=0)
+bestlam.ridge = cv.ridge.out$lambda.min
+i <- which(cv.ridge.out$lambda == cv.ridge.out$lambda.min)
+mse.min.ridge <- cv.ridge.out$cvm[i]
+
+ridge.model = glmnet(xtrain, ytrain, alpha=0, lambda=bestlam.ridge)
+
+ridge.pred.train = predict(ridge.model, newx=xtrain)
+mse.ridge.train = MSE(ridge.pred.train)
+r2.ridge.train = rsquared(ridge.pred.train)
+
+ridge.pred.test = predict(ridge.model, newx=xtest)
+mse.ridge.test = MSE(ridge.pred.test)
+r2.ridge.test = rsquared(ridge.pred.test)
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#1. Linear Regression
-
+## 2. Lasso
 ```{r}
 
-lm_model = lm(totalinsurancepremiumofthepolicy ~., data = train)
-summary(lm_model)
+cv.lasso.out = cv.glmnet(xtrain, ytrain, alpha=1)
+bestlam.lasso = cv.lasso.out$lambda.min
+i <- which(cv.lasso.out$lambda == cv.lasso.out$lambda.min)
+mse.min.lasso <- cv.lasso.out$cvm[i]
+
+lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
+
+lasso.pred.train = predict(lasso.model, newx=xtrain)
+mse.lasso.train = MSE(lasso.pred.train)
+r2.lasso.train = rsquared(lasso.pred.train)
+
+lasso.pred.test = predict(lasso.model, newx=xtest)
+mse.lasso.test = MSE(lasso.pred.test)
+r2.lasso.test = rsquared(lasso.pred.test)
 ```
 
-
 ```{r}
-plot_model(lm_model, show.values = TRUE, value.offset = 0.4,sort.est = TRUE, title = "Estimates of Linear Regression")
+ggplot(mapping = aes(x=log(cv.ridge.out$lambda), y=cv.ridge.out$cvm)) +
+  geom_point() +
+  geom_point(aes(x=log(bestlam.ridge), y=mse.min.ridge, color="blue", size = 2), show.legend = FALSE, color="blue") +
+  geom_errorbar(aes(ymin=cv.ridge.out$cvm-cv.ridge.out$cvsd, ymax=cv.ridge.out$cvm+cv.ridge.out$cvsd), color="gray") +
+  xlab("Log(lambda)") +
+  ylab("Mean Squared Error") +
+  labs(title = "Optimal Lambda for Ridge Regression", subtitle = paste("Best Lambda: ", bestlam.ridge)) +
+  theme_classic()
+dev.copy(jpeg, filename="Ridge_Lambda.jpg");
+dev.off ()
 
-dev.copy(jpeg,filename="Linear_Estimates_Plot.jpg");
+
+
+ggplot(mapping = aes(x=log(cv.lasso.out$lambda), y=cv.lasso.out$cvm)) +
+  geom_point() +
+  geom_point(aes(x=log(bestlam.lasso), y=mse.min.lasso, size = 2), show.legend = FALSE, color="red") +
+  geom_errorbar(aes(ymin=cv.lasso.out$cvm-cv.lasso.out$cvsd, ymax=cv.lasso.out$cvm+cv.lasso.out$cvsd), color="gray") +
+  xlab("Log(lambda)") +
+  ylab("Mean Squared Error") +
+  labs(title = "Optimal Lambda for Lasso Regression", subtitle = paste("Best Lambda: ", bestlam.lasso)) +
+  theme_classic()
+dev.copy(jpeg, filename="Lasso_Lambda.jpg");
 dev.off ()
 ```
 
-```{r}
-par(mfrow = c(2,2))
-plot(lm_model)
 
-dev.copy(jpeg, filename="Linear_Residues_Plot.jpg");
+```{r}
+ridge.coef <- rownames_to_column(data.frame(coef(ridge.model)[,1]), var = "Variable") %>%
+  rename(Coefficient = coef.ridge.model....1.)
+
+ridge.coef <- ridge.coef %>%
+  filter(Variable != "(Intercept)") %>%
+  arrange(desc(abs(Coefficient)))
+lasso.coef <- rownames_to_column(data.frame(coef(lasso.model)[,1]), var = "Variable") %>%
+  rename(Coefficient = coef.lasso.model....1.)
+
+lasso.coef <- lasso.coef %>%
+  filter(Variable != "(Intercept)") %>%
+  arrange(desc(abs(Coefficient)))
+
+coef.compare <- lasso.coef %>%
+  left_join(ridge.coef, by = "Variable") %>%
+  rename("Lasso Coefficient" = Coefficient.x) %>%
+  rename("Ridge Coefficient" = Coefficient.y)
+
+coef.compare
+write.csv(coef.compare,"../04_Modeling/Ridge_Lasso_Lambda", row.names = FALSE)
+```
+
+```{r}
+plot1 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy, y = ridge.pred.test)) +
+  geom_point(color = "red") +
+  geom_abline(slope = 1) +
+  xlab("Predicted Insurance Premium") +
+  ylab("Actual Insurance Premium") +
+  labs(title = "Ridge Regression")
+
+plot2 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy, y = lasso.pred.test)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1) +
+  xlab("Predicted Insurance Premium") +
+  ylab("Actual Insurance Premium") +
+  labs(title = "Lasso")
+
+grid.arrange(plot1, plot2, nrow = 2)
+
+dev.copy(jpeg, filename="Ridge_Lasso_Plot.jpg")
 dev.off ()
 ```
 
 
+# Bagging or random forest (can not run due to memory limit)
 ```{r}
-lm_pred <- predict(lm_model, test)
+set.seed(100)
 
+bag.model <- randomForest(totalinsurancepremiumofthepolicy ~., data = train, mtry = 10, importance = TRUE)
+
+pred.bag.train <- predict(bag.model, train)
+mse.bag.train <- MSE(pred.bag.train)
+r2.bag.train <- rsquared(pred.bag.train)
+
+pred.bag.test <- predict(bag.model, test)
+mse.bag.test <- MSE(pred.bag.test)
+r2.bag.test <- rsquared(pred.bag.test)
+```
+
+
+
+# Bossting
+```{r}
+set.seed(100)
+boost.model <- gbm(totalinsurancepremiumofthepolicy ~., data = train, distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
+
+pred.boost.train <- predict(boost.model, train)
 ```
 
 
 ```{r}
-lm_data <- cbind(Actual = test$totalinsurancepremiumofthepolicy, Predicted = lm_pred)
-#View(lm_data)
+mse.boost.train <- MSE(pred.boost.train)
+r2.boost.train <- rsquared(pred.boost.train)
+
+pred.boost.test <- predict(boost.model, test)
 ```
+
 
 ```{r}
-actuals_preds <- data.frame(lm_data)
-
-# Min-Max Accuracy Calculation
-min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))  
-min_max_accuracy
-# => 61%, min_max accuracy
-
+mse.boost.test <- MSE(pred.boost.test)
+r2.boost.test <- rsquared(pred.boost.test)
 ```
+
 
 ```{r}
-# find the error
-Error <- actuals_preds$Actual - actuals_preds$Predicted
-actuals_preds1 <- cbind(actuals_preds, Error)
-View(actuals_preds1)
-
-rmse <- sqrt(mean((actuals_preds1$Error)^2))
-rmse
+df2 <- data.frame(summary(boost.model, plotit = FALSE), row.names = NULL)
+ggplot(df, aes(x=reorder(var,rel.inf), y=rel.inf, fill=reorder(var,rel.inf))) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(title = "Relative Influence of Variables in Predicting Insurance Premium") +
+  ylab("Relative Influence") +
+  xlab("") +
+  scale_fill_manual(values = colorRampPalette(brewer.pal(1,"Oranges"))(10)) +
+  theme_classic()
 ```
+
+
+
 
 #2. PCA
 
@@ -206,43 +285,10 @@ library(GGally)
 library(devtools)
 require(ggbiplot)
 ```
-```{r}
-pcr.model = pcr(totalinsurancepremiumofthepolicy ~., data = train, scale = TRUE, validation = "CV")
-validationplot(pcr.model, val.type="MSEP", main = "totalinsurancepremiumofthepolicy", ylab = "Mean Squared Error")
-```
-
 
 
 ```{r}
-summary(pcr.model)
-```
-
-
-```{r}
-pcr.pred5.train = predict(pcr.model, train, ncomp = 5)
-mse.pcr5.train = MSE(pcr.pred5.train)
-r2.pcr5.train = rsquared(pcr.pred5.train)
-
-pcr.pred5.test = predict(pcr.model, test, ncomp = 5)
-mse.pcr5.test = MSE(pcr.pred5.test)
-r2.pcr5.test = rsquared(pcr.pred5.test)
-
-pcr.pred9.train = predict(pcr.model, train, ncomp = 9)
-mse.pcr9.train = MSE(pcr.pred9.train)
-r2.pcr9.train = rsquared(pcr.pred9.train)
-
-pcr.pred9.test = predict(pcr.model, test, ncomp = 9)
-mse.pcr9.test = MSE(pcr.pred9.test)
-r2.pcr9.test = rsquared(pcr.pred9.test)
-
-```
-
-
-
-
-
-```{r}
-PCA <- prcomp(df[,1:18], scale = TRUE)  # apply PCA
+PCA <- prcomp(train[,1:18], scale = TRUE)  # apply PCA
 
 summary(PCA)
 ```
@@ -269,81 +315,27 @@ dev.off ()
 ```
 
 ```{r}
-R2 <- data.frame(n_PCA = numeric(), R2_PCA = numeric(), R2_cross_val = numeric()) #create a vector to store the R-squared values
-
-for (i in 1:18) {
-  pc <- PCA$x[,1:i]  # use some i principal components from 4 to 10
-  pc_data <- cbind(df[,19], pc)  # create data set
-  
-  model <- lm(V1~.,data = as.data.frame(pc_data)) # fit model
-  R2_PCA <- 1 - sum(model$residuals^2)/sum((df$totalinsurancepremiumofthepolicy -        mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared for PCA model
-
-  
-  cross_val <- cv.lm(as.data.frame(pc_data), model, m=5) # cross-validate 
-  R2_cross_val <- 1 - attr(cross_val,"ms")*nrow(df)/sum((df_filter$totalinsurancepremiumofthepolicy - mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
-  
-  R2[nrow(R2)+1,]<- c(i, R2_PCA, R2_cross_val)
- }
-
+pca.pred4 = predict(PCA, test[,1:18])
 ```
 
 
 
-```{r}
-
-plot(R2$R2_cross_val, xlab = "Principal Component", ylab = "Cross-validated R-squared with this many principal components", x = R2$n_PCA, ylim =c(0,1),type = "b")
-```
 
 
-## Lasso
-```{r}
-xtrain = model.matrix(totalinsurancepremiumofthepolicy ~.,train)[,-1]
-ytrain = train$totalinsurancepremiumofthepolicy
-xtest = model.matrix(totalinsurancepremiumofthepolicy ~.,test)[,-1]
-ytest = test$totalinsurancepremiumofthepolicy
 
-cv.lasso.out = cv.glmnet(xtrain, ytrain, alpha=1)
-bestlam.lasso = cv.lasso.out$lambda.min
-i <- which(cv.lasso.out$lambda == cv.lasso.out$lambda.min)
-mse.min.lasso <- cv.lasso.out$cvm[i]
 
-lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
 
-lasso.pred.train = predict(lasso.model, newx=xtrain)
-mse.lasso.train = MSE(lasso.pred.train)
-r2.lasso.train = rsquared(lasso.pred.train)
 
-lasso.pred.test = predict(lasso.model, newx=xtest)
-mse.lasso.test = MSE(lasso.pred.test)
-r2.lasso.test = rsquared(lasso.pred.test)
-```
 
-```{r}
-lasso_plot <- ggplot(mapping = aes(x=log(cv.lasso.out$lambda), y=cv.lasso.out$cvm)) +
-  geom_point() +
-  geom_point(aes(x=log(bestlam.lasso), y=mse.min.lasso, size = 2), show.legend = FALSE, color="red") +
-  geom_errorbar(aes(ymin=cv.lasso.out$cvm-cv.lasso.out$cvsd, ymax=cv.lasso.out$cvm+cv.lasso.out$cvsd), color="gray") +
-  xlab("Log(lambda)") +
-  ylab("Mean Squared Error") +
-  labs(title = "Optimal Lambda for Lasso Regression", subtitle = paste("Best Lambda: ", bestlam.lasso)) +
-  theme_classic()
 
-```
 
-```{r}
-lasso.coef <- rownames_to_column(data.frame(coef(lasso.model)[,1]), var = "Variable") %>%
-  rename(Coefficient = coef.lasso.model....1.)
 
-lasso.coef <- lasso.coef %>%
-  filter(Variable != "(Intercept)") %>%
-  arrange(desc(abs(Coefficient)))
 
-coef.compare <- lasso.coef %>%
-  left_join(ridge.coef, by = "Variable") %>%
-  rename("Lasso Coefficient" = Coefficient.x) %>%
-  rename("Ridge Coefficient" = Coefficient.y)
 
-coef.compare
-```
+
+
+
+
+
 
 
