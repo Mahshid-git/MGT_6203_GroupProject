@@ -29,6 +29,7 @@ library(rpart)
 library(ggplot2)
 library(corrplot)
 library(tidyr)
+library(Hmisc) #for redundancy analysis
 ```
 
 # EXAMINE POLICY_CLEAN_0IMPUTE first
@@ -41,13 +42,58 @@ df <- read_parquet(file_path, as_tibble = TRUE)
 #str(df)
 ```
 
+```{r}
+str(df)
+```
+```{r}
+# more data cleaning
+# ratemethod is categorical
+df$ratemethod_manual <- ifelse( (df$ratemethod==1),1,0) # manual rate method; others are all grouped together as they follow a procedure
+df$ratemethod_prp <- ifelse( (df$ratemethod==7),1,0) # preferred risk policy
+df <- subset(df,select=-c(ratemethod)) # drop ratemethod after defining the dummy variable
+
+# 999 in elevationdifference means na; also there are a few outlier:-9986, 9989 that must be typos
+df$elevationdifference <- na_if(df$elevationdifference, 999)
+df$elevationdifference <- na_if(df$elevationdifference, -9986)
+df$elevationdifference <- na_if(df$elevationdifference, 9989)
+
+# occupancy type to dummy
+df$occupancytype_single <- ifelse( (df$occupancytype==1),1,0) # single family home
+df$occupancytype_2or4 <- ifelse( (df$occupancytype==2),1,0) # 2-4 unit building
+df$occupancytype_4more <- ifelse( (df$occupancytype==3 | df$occupancytype==4),1,0) # more than 4 unit building
+df$occupancytype_business <- ifelse( (df$occupancytype==6),1,0) # non-residential business building
+# drop occupancytype after defining the dummy variable
+df <- subset(df, select=-c(occupancytype))
+```
+
+```{r}
+cols = colnames(df) # all columns
+date_list = c() # list of date variables
+for (c in cols){
+  if (endsWith(c, 'date') == TRUE){
+    date_list <- append(c, date_list)
+  }
+  
+}
+num_list <- cols[!cols %in% date_list]
+ind_list = c() # indicator list
+for (c in num_list){
+  if (unique(df[c][is.na(df[c])==0]) == list(0,1)){
+    ind_list <- append(c, ind_list)
+  }
+}
+ind_list #list of indicator/dummy variables
+num_list2 <- num_list[!num_list %in% ind_list] #list of continuous variables
+num_list2
+```
 
 #1 Explore 
 
 ```{r}
 # Select continuous variables for correlation examination
 # comment
-df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,deductibleamountinbuildingcoverage, deductibleamountincontentscoverage, federalpolicyfee, latitude, longitude, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
+#df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,deductibleamountinbuildingcoverage, deductibleamountincontentscoverage, federalpolicyfee, latitude, #longitude, policycount, reportedzipcode, ratemethod, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
+df_num <- subset(df, select = c(basementenclosurecrawlspacetype, censustract,crsdiscount,deductibleamountinbuildingcoverage, deductibleamountincontentscoverage, federalpolicyfee, latitude, longitude, policycount, reportedzipcode, ratemethod_manual, ratemethod_prp, totalbuildinginsurancecoverage, totalcontentsinsurancecoverage))
 
 ```
 
@@ -64,6 +110,7 @@ corrplot(cormat, tl.col = "red", tl.srt = 45, bg = "White",
 dev.copy(jpeg, filename="Correlation Plot of Flood Data.jpg");
 dev.off ()
 ```
+
 
 
 ```{r}
@@ -96,28 +143,426 @@ highlyCor_Col
 ```
 
 ```{r}
-# Now, we remove highly correlated variables from original dataset and create cleaner dataset, the dataset now contains 41 columns
-
-df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
-dim(df_clean)
+#df_clean = df[, -which(colnames(df) %in% highlyCor_Col)]
+#dim(df_clean)
 #View(df_clean)
 ```
-# Run linear regression
 
 ```{r}
-fit = lm(totalinsurancepremiumofthepolicy ~., df_clean)
+highly_corelated = findCorrelation(cormat_nonlin, cutoff = 0.6)
+
+highlyCor_Col_nonlin = colnames(df_num)[highly_corelated]
+highlyCor_Col_nonlin
+```
+```{r}
+# Now, we remove highly correlated variables from original dataset and create cleaner dataset, the dataset now contains 41 columns
+df_clean = df[, -which(colnames(df) %in% highlyCor_Col_nonlin)]
+dim(df_clean)
+```
+
+
+  
+```{r}
+var_list <- colnames(df_clean)
+var_list <- var_list[!var_list %in% date_list]
+df_clean2 <- subset(df_clean, select=(var_list))
+colSums(is.na(df_clean2))
+# lots of Nas for elevationdifference
+```
+
+```{r}
+cor(subset(df_clean2, select=c(elevationdifference, totalinsurancepremiumofthepolicy)), use = "pairwise.complete.obs", method="spearman")
+# elevatiodifference has a high nonlinear correlation with the target variable (~-0.66) ==> it should not be removed 
+```
+```{r}
+# replace na with mean and see if corrrelation holds
+df_clean3 <- df_clean2
+df_clean3$elevationdifference[is.na(df_clean3$elevationdifference)] <- mean(df_clean2$elevationdifference, na.rm=TRUE)
+cor(subset(df_clean3, select=c(elevationdifference, totalinsurancepremiumofthepolicy)), use = "pairwise.complete.obs", method="spearman")
+# The correlation doesn't hold, but the direction holds (still negative) and the value is still high (-0.29)
+```
+
+# It doesn't hold, but the direction (still negative) holds and the value is still high (-0.29)
+
+```{r}
+sd(df$elevationdifference, na.rm=TRUE)
+mean(df$elevationdifference, na.rm=TRUE)
+# plotting elevation differences between -100 to 250 (majority of data)
+plot(df_clean3$elevationdifference[df_clean3$elevationdifference> -100 & df$elevationdifference<250], df_clean3$totalinsurancepremiumofthepolicy[df_clean3$elevationdifference> -100 & df_clean3$elevationdifference<250])
+```
+
+
+```{r}
+# reportedzipcode: 5 digit Postal Zip Code for the insured property reported by WYO partners
+# It's not a real number; also we have longitude and latitude ==> need to omit it.
+df_clean3 <- subset(df_clean3, select=-c(reportedzipcode))
+# remove rows with na values
+row.has.na <- apply(df_clean3, 1, function(x){any(is.na(x))})
+sum(row.has.na)
+df_clean3 <- df_clean3[!row.has.na,]
+nrow(df_clean3)
+```
+```{r}
+fit = lm(totalinsurancepremiumofthepolicy ~., data=df_clean3)
 summary(fit)
 ```
 
-## from the output, we can remove some insignificant variables
 
 ```{r}
-fit1 = lm(totalinsurancepremiumofthepolicy ~. -censustract -policytermindicator -basementonly -elevationdifference -mobilehomeortrailer  -floodzone_modrisk -floodzone_undetermined, df_clean)
-summary(fit1)
+# removing variables with NA coefficients
+# NA as a coefficient in a regression indicates that the variable in question is linearly related to the other variables.
+df_clean3 <- subset(df_clean3, select=-c(policytermindicator,mobilehomeortrailer, floodzone_undetermined, occupancytype_business))
+fit = lm(totalinsurancepremiumofthepolicy ~., data=df_clean3)
+summary(fit)
+# not removing insignificant features yet. Maybe after non-linear transformation they turn significant
 ```
 
 ```{r}
-vif(fit1)
+# check log-linear model
+fit = lm(log(totalinsurancepremiumofthepolicy+1) ~., data=df_clean3)
+summary(fit)
+```
+
+```{r}
+# there is a non-linear trend here.
+# let's check if the features need to be transformed too
+final_features = colnames(df_clean3)
+final_features <- final_features[final_features != "totalinsurancepremiumofthepolicy"]
+final_features
+```
+
+```{r}
+# for each feature compare adjusted R2 for log transformation; it will print the features whose log transformation increases adjusted R2
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ basementenclosurecrawlspacetype, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementenclosurecrawlspacetype+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementenclosurecrawlspacetype")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ construction, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(construction+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("construction")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ deductibleamountinbuildingcoverage, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(deductibleamountinbuildingcoverage+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("deductibleamountinbuildingcoverage")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ deductibleamountincontentscoverage, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(deductibleamountincontentscoverage+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("deductibleamountincontentscoverage")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ elevatedbuildingindicator, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(elevatedbuildingindicator+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("elevatedbuildingindicator")
+}
+
+const <- abs(min(df_clean3$elevationdifference))
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ elevationdifference, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(elevationdifference+const+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("elevationdifference+const")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ federalpolicyfee, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(federalpolicyfee+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("federalpolicyfee")
+}
+
+const <- abs(min(df_clean3$latitude))
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ latitude, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(latitude+const+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("latitude+const")
+}
+
+```
+
+```{r}
+# continue with log transformation of features and comparing R2
+const <- abs(min(df_clean3$longitude))
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ longitude, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(longitude+const+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("longitude+const")
+}
+
+const <- abs(min(df_clean3$numberoffloorsininsuredbuilding))
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ numberoffloorsininsuredbuilding, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(numberoffloorsininsuredbuilding+const+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("numberoffloorsininsuredbuilding")
+}
+
+#const <- abs(min(df_clean3$policycount))
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ policycount, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(policycount+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("policycount")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ postfirmconstructionindicator, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(postfirmconstructionindicator+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("postfirmconstructionindicator")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ primaryresidenceindicator, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(primaryresidenceindicator+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("primaryresidenceindicator")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ totalbuildinginsurancecoverage, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(totalbuildinginsurancecoverage+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("totalbuildinginsurancecoverage")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ not_condo, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(not_condo+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("not_condo")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ u_condo, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(u_condo+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("u_condo")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ lowerflooronly, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(lowerflooronly+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("lowerflooronly")
+}
+```
+
+
+```{r}
+# continue with log transformation of features and comparing R2
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ upperandlowerfloors, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(upperandlowerfloors+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("upperandlowerfloors")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ basementandabove, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementandabove+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementandabove")
+}
+
+#const <- abs(min(df_clean3$policycount))
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ basementonly, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementonly+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("basementonly")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ morethan1floor, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(morethan1floor+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("morethan1floor")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ floodzone_highrisk, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(floodzone_highrisk+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("floodzone_highrisk")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ floodzone_modrisk, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(floodzone_modrisk+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("floodzone_modrisk")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ occupancytype_single, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(occupancytype_single+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("occupancytype_single")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ occupancytype_2or4, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(occupancytype_2or4+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("occupancytype_2or4")
+}
+
+mod_lin <- lm(log(totalinsurancepremiumofthepolicy+1) ~ occupancytype_4more, 
+              data = df_clean3)
+mod_log <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(occupancytype_4more+1), 
+              data = df_clean3)
+if (summary(mod_log)$adj.r.squared > summary(mod_lin)$adj.r.squared) {
+  print("occupancytype_4more")
+}
+```
+```{r}
+final_features
+```
+
+
+```{r}
+const <- abs(min(df_clean3$numberoffloorsininsuredbuilding))
+# log transformation of indicator variables makes no difference on R2
+fit <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementenclosurecrawlspacetype+1) + 
+            construction +
+            log(deductibleamountinbuildingcoverage+1) +
+            deductibleamountincontentscoverage +
+            elevatedbuildingindicator +
+            elevationdifference +
+            federalpolicyfee +
+            latitude +
+            longitude +
+            log(numberoffloorsininsuredbuilding+const+1) +
+            log(policycount+1) +
+            postfirmconstructionindicator +
+            primaryresidenceindicator +
+            totalbuildinginsurancecoverage +
+            not_condo +
+            (u_condo) + # log made no difference on R2
+            (lowerflooronly) + # log made no difference on R2
+            (upperandlowerfloors) + # log made no difference on R2
+            (basementandabove) + # log made no difference on R2
+            basementonly +
+            (morethan1floor) + # log made no difference on R2
+            (floodzone_highrisk) + # log made no difference on R2
+            #floodzone_modrisk + # not significant
+            occupancytype_single +
+            occupancytype_2or4 +
+            (occupancytype_4more), # log made no difference on R2
+            data= df_clean3
+            )
+summary(fit)
+```
+```{r}
+# try cubic root transformation
+
+temp <- df_clean3
+temp$elevationdifference_trans <- (temp$elevationdifference)^(1/3)
+temp$deductibleamountinbuildingcoverage_trans <- (temp$deductibleamountinbuildingcoverage)^(1/3)
+temp$deductibleamountincontentscoverage_trans <- (temp$deductibleamountincontentscoverage)^(1/3)
+temp$basementenclosurecrawlspacetype_trans <- (temp$basementenclosurecrawlspacetype)^(1/3)
+temp$totalbuildinginsurancecoverage_trans <- (temp$totalbuildinginsurancecoverage)^(1/3)
+temp$latitude_trans <- (temp$latitude)^(1/3) # no difference
+temp$longitude_trans <- (temp$longitude)^(1/3)
+  
+const <- abs(min(df_clean3$numberoffloorsininsuredbuilding))
+
+# log transformation of indicator variables makes no difference on R2
+fit <- lm(log(totalinsurancepremiumofthepolicy+1) ~ log(basementenclosurecrawlspacetype+1) + 
+            construction +
+            deductibleamountinbuildingcoverage_trans +
+            deductibleamountincontentscoverage_trans +
+            elevatedbuildingindicator +
+            elevationdifference_trans +
+            federalpolicyfee +
+            latitude +
+            longitude +
+            log(numberoffloorsininsuredbuilding+const+1) +
+            log(policycount+1) +
+            postfirmconstructionindicator +
+            primaryresidenceindicator +
+            totalbuildinginsurancecoverage_trans +
+            not_condo +
+            (u_condo) + 
+            (lowerflooronly) + 
+            (upperandlowerfloors) + 
+            (basementandabove) + 
+            basementonly +
+            (morethan1floor) + 
+            (floodzone_highrisk) + 
+            occupancytype_single +
+            occupancytype_2or4 +
+            (occupancytype_4more), 
+            data= temp
+            )
+summary(fit)
+```
+
+
+# Redundancies (takes time to run)
+
+```{r}
+## Redundancies
+#redun <- redun(~.,
+#  r2 = 0.6,
+#  type = "adjusted",
+#  tlinear = FALSE,
+#  nk = 3, #changed from 4
+#  iterms = TRUE,
+#  pc = TRUE,
+#  data = subset(temp, select=-c(totalinsurancepremiumofthepolicy)) # all x variables
+#)
+
+#print(redun, digits = 2)
+
+```
+
+
+
+## None are insignificant variables
+
+```{r}
+vif(fit)
 ```
 
 # Choose a VIF cutoff under which a variable is retained (Zuur et al. 2010) 
@@ -125,39 +570,40 @@ vif(fit1)
 ## Create the final dataset for further analysis 
 
 ```{r}
-df_final <- subset(df_clean, select = -c(censustract, policytermindicator, basementonly, mobilehomeortrailer, floodzone_highrisk, floodzone_modrisk, floodzone_undetermined, policyterminationdate, not_condo, u_condo, policyeffectivedate, crsdiscount, elevationdifference))
+df_final <- subset(temp, select = -c(not_condo, policycount, u_condo))
 
-#View(df_final)
+const <- abs(min(df_final$numberoffloorsininsuredbuilding))
+
+df_final$totalinsurancepremiumofthepolicy_log <- log(df_final$totalinsurancepremiumofthepolicy+1)
+df_final$basementenclosurecrawlspacetype_log <- log(df_final$basementenclosurecrawlspacetype +1)
+df_final$numberoffloorsininsuredbuilding_log <- log(df_final$numberoffloorsininsuredbuilding+const+1)
+
+df_final <- subset(df_final, select = c(totalinsurancepremiumofthepolicy_log,
+                  basementenclosurecrawlspacetype_log, 
+                  construction, 
+                  deductibleamountinbuildingcoverage_trans,
+                  deductibleamountincontentscoverage_trans, 
+                  elevatedbuildingindicator, 
+                  elevationdifference_trans,
+                  federalpolicyfee,
+                  latitude,
+                  longitude,
+                  numberoffloorsininsuredbuilding_log,
+                  postfirmconstructionindicator, 
+                  primaryresidenceindicator, 
+                  totalbuildinginsurancecoverage_trans,
+                  lowerflooronly, 
+                  upperandlowerfloors,
+                  basementandabove,
+                  basementonly,
+                  morethan1floor,
+                  floodzone_highrisk,
+                  occupancytype_single,
+                  occupancytype_2or4,
+                  occupancytype_4more))
+fit2 <- lm(totalinsurancepremiumofthepolicy_log~., data=df_final)
+summary(fit2)
 ```
-
-```{r}
-# count NA values in each column
-colSums(is.na(df_final))
-
-```
-
-# remove all the rows with NA values (22458 rows ~ 1% of dataset)
-```{r}
-row.has.na <- apply(df_final, 1, function(x){any(is.na(x))})
-sum(row.has.na)
-df_final_filtered <- df_final[!row.has.na,]
-```
-```{r}
-# count NA values in each column
-colSums(is.na(df_final_filtered))
-
-```
-
-
-```{r}
-# Select only numerical columns for data analysist (leave data type in df_final_filtered)
-# df_num includes 20 variables
-
-df_num <- subset(df_final_filtered, select = -c(originalconstructiondate, originalnbdate))
-
-#View(df_num)
-```
-
 
 ```{r}
 
@@ -165,36 +611,27 @@ df_num <- subset(df_final_filtered, select = -c(originalconstructiondate, origin
 
 # df_final_NoNA includes numeric (df_num) and 2 "date" columns
 
-file_path3 <- "../03_EDA/df_final_0impute.parquet"
-write_parquet(df_final_filtered, file_path3)
-
-# df_num includes only numeric variables for analysis
-file_path4 <- "../03_EDA/df_num_0impute.parquet"
-write_parquet(df_num, file_path4)
-
+file_path3 <- "../03_EDA/df_final_0impute_nonlin.parquet"
+write_parquet(df_final, file_path3)
 ```
 
 
 # Import data again to avoid run all above commands
 ```{r}
-file_path <- "../03_EDA/df_num_0impute.parquet"
+file_path <- "../03_EDA/df_final_0impute_nonlin.parquet"
 df_num <- read_parquet(file_path, as_tibble = TRUE)
-
-file_path <- "../03_EDA/df_final_0impute.parquet"
-df <- read_parquet(file_path, as_tibble = TRUE)
-
 ```
 # Rerun lm to check significant variables
 
 
 ```{r}
-fit2 = lm(totalinsurancepremiumofthepolicy ~., df)
-summary(fit2)
+fit3 = lm(totalinsurancepremiumofthepolicy_log ~., df_num)
+summary(fit3)
 ```
 
 
 ```{r}
-vif(fit2)
+vif(fit3)
 ```
 
 # The data all good now.
@@ -207,19 +644,22 @@ View(df_num)
 
 
 ```{r}
-scaledData = as.data.frame(scale(df_num[,c(3,4,6,7,13,14,15)])) # standardize all numerical variables
-scaledData <- cbind(df_num[,c(1,2,5,8,9,10,11,12,17,18,19,20)],scaledData,df_num[,16]) # Add categorical columns  back in
+scaledData = as.data.frame(scale(df_num[,c(3,4,6,7,8,9,10,13)])) # standardize all numerical variables
+scaledData <- cbind(df_num[,c(2,5,11,12,14,15,16,17,18,19,20,21,22,23)],scaledData,df_num[,1]) # Add categorical columns  back in
 
 colnames(scaledData)[16] <- "totalinsurancepremiumofthepolicy"
 ```
 
 
+```{r}
+colnames(scaledData)
+```
 
 ```{r}
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
 
-lmFit_Step <- train(totalinsurancepremiumofthepolicy ~ ., data = scaledData, "lmStepAIC", scope = 
-                 list(lower = totalinsurancepremiumofthepolicy~1, upper = totalinsurancepremiumofthepolicy~.), direction = "backward",trControl=ctrl, na.action=na.exclude)
+lmFit_Step <- train(totalinsurancepremiumofthepolicy_log ~ ., data = scaledData, "lmStepAIC", scope = 
+                 list(lower = totalinsurancepremiumofthepolicy_log~1, upper = totalinsurancepremiumofthepolicy_log~.), direction = "backward",trControl=ctrl, na.action=na.exclude)
 
 ```
 
