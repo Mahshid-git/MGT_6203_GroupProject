@@ -653,7 +653,7 @@ names(which.max(table(temp$reportedzipcode))) # 77062
 df_5_Zipcode <- subset(df_final, reportedzipcode == '77096'| reportedzipcode == '77089' |reportedzipcode == '77084'| reportedzipcode == '77024' |reportedzipcode == '77062')
 
 # Remove zipcode, the dataset includes 300K rows
-df_5_Zipcode <- subset(df_5_Zipcode, select=-c(reportedzipcode))
+#df_5_Zipcode <- subset(df_5_Zipcode, select=-c(reportedzipcode))
 # remove rows with na values
 row.has.na <- apply(df_5_Zipcode, 1, function(x){any(is.na(x))})
 sum(row.has.na)
