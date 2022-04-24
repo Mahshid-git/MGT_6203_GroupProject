@@ -242,12 +242,21 @@ tree.model1 <- tree(totalinsurancepremiumofthepolicy_log ~., data = train)
 summary(tree.model1)
 
 plot(tree.model1)
-
+text(tree.model1)
 title('Single Tree ')
+dev.copy(jpeg, filename = "Single tree_Simple.jpg")
+dev.off ()
 
 ```
+```{r}
+install.packages("party")
+library(party)
+tree <-ctree(totalinsurancepremiumofthepolicy_log ~., train)
+print(tree)
+plot(tree)
 
 
+```
 
 
 
