@@ -139,7 +139,7 @@ highly_corelated = findCorrelation(cormat, cutoff = 0.6)
 
 highlyCor_Col = colnames(df_num)[highly_corelated]
 highlyCor_Col
-
+# this checks just for linear correlations
 ```
 
 ```{r}
@@ -681,6 +681,11 @@ temp0 = subset(df_num, select=-c(reportedzipcode))
 fit3 = lm(totalinsurancepremiumofthepolicy_log ~., temp0)
 summary(fit3)
 ```
+```{r}
+temp0 = subset(df_num, select=-c(reportedzipcode, basementenclosurecrawlspacetype_log))
+fit3 = lm(totalinsurancepremiumofthepolicy_log ~., temp0)
+summary(fit3)
+```
 
 
 ```{r}
@@ -692,35 +697,27 @@ vif(fit3)
 
 1. Stepwise regression
 ```{r}
-colnames(df_num)
-```
-
-
-```{r}
-scaledData = as.data.frame(scale(df_num[,c(3,4,6,7,8,9,10,13)])) # standardize all numerical variables
-scaledData <- cbind(df_num[,c(2,5,11,12,14,15,16,17,18,19,20,21,22,23)],scaledData,df_num[,1], df_num[,24]) # Add categorical columns  back in
-
-colnames(scaledData)[16] <- "totalinsurancepremiumofthepolicy_log"
-```
-
-
-```{r}
-colnames(scaledData)
-```
-
-```{r}
+temp0 <- subset(df_num, select=-c(reportedzipcode, basementenclosurecrawlspacetype_log))
 # remove rows with na values
-row.has.na <- apply(scaledData, 1, function(x){any(is.na(x))})
+row.has.na <- apply(temp0, 1, function(x){any(is.na(x))})
 sum(row.has.na)
-scaledData <- scaledData[!row.has.na,]
+temp0 <- temp0[!row.has.na,]
+colnames(temp0)
 ```
 
 
+```{r}
+scaledData = as.data.frame(scale(temp0[,c(2,3,4,6,7,8,9,13)])) # standardize all numerical variables
+scaledData <- cbind(temp0[,c(5,10,11,12,14,15,16,17,18,19,20,21,22)],scaledData,temp0[,1]) # Add categorical columns  back in
+
+colnames(scaledData)#[16] <- "totalinsurancepremiumofthepolicy_log"
+```
+
+# this part is computationally demanding
 ```{r}
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
 
-temp0 = subset(scaledData, select=-c(reportedzipcode))
-lmFit_Step <- train(totalinsurancepremiumofthepolicy_log ~ ., data = df_final, "lmStepAIC", scope = 
+lmFit_Step <- train(totalinsurancepremiumofthepolicy_log ~ ., data = temp0, "lmStepAIC", scope = 
                  list(lower = totalinsurancepremiumofthepolicy_log~1, upper = totalinsurancepremiumofthepolicy_log~.), direction = "backward",trControl=ctrl, na.action=na.exclude)
 
 ```
@@ -728,29 +725,45 @@ lmFit_Step <- train(totalinsurancepremiumofthepolicy_log ~ ., data = df_final, "
 
 
 ```{r}
-mod_Step = lm(totalinsurancepremiumofthepolicy_log ~ basementenclosurecrawlspacetype_log + construction + elevatedbuildingindicator + 
-    postfirmconstructionindicator + primaryresidenceindicator + 
+mod_Step = lm(totalinsurancepremiumofthepolicy_log ~ construction + deductibleamountinbuildingcoverage_trans + 
+    deductibleamountincontentscoverage_trans + elevatedbuildingindicator + 
+    elevationdifference_trans + federalpolicyfee + latitude + 
+    longitude + numberoffloorsininsuredbuilding_log + postfirmconstructionindicator + 
+    primaryresidenceindicator + totalbuildinginsurancecoverage_trans + 
     lowerflooronly + upperandlowerfloors + basementandabove + 
-    morethan1floor + crsdiscount + deductibleamountinbuildingcoverage + 
-    deductibleamountincontentscoverage + latitude + longitude + 
-    numberoffloorsininsuredbuilding + policycount + totalbuildinginsurancecoverage + 
-    totalcontentsinsurancecoverage,
+    basementonly + morethan1floor + floodzone_highrisk + occupancytype_single + 
+    occupancytype_2or4 + occupancytype_4more,
     data = temp0)
 summary(mod_Step)
 ```
+```{r}
+# trying scaled data
+mod_Step = lm(totalinsurancepremiumofthepolicy_log ~ construction + deductibleamountinbuildingcoverage_trans + 
+    deductibleamountincontentscoverage_trans + elevatedbuildingindicator + 
+    elevationdifference_trans + federalpolicyfee + latitude + 
+    longitude + numberoffloorsininsuredbuilding_log + postfirmconstructionindicator + 
+    primaryresidenceindicator + totalbuildinginsurancecoverage_trans + 
+    lowerflooronly + upperandlowerfloors + basementandabove + 
+    basementonly + morethan1floor + floodzone_highrisk + occupancytype_single + 
+    occupancytype_2or4 + occupancytype_4more,
+    data = scaledData)
+summary(mod_Step)
+```
+
 
 ## LASSO
+# computationally demanding
 ```{r}
 ## Variable selections using Lasso
 
 train_con <- trainControl(method = 'cv', number = 5) # using 5 folds cv
 
-lasso <- train(totalinsurancepremiumofthepolicy ~., scaledData,
+lasso <- train(totalinsurancepremiumofthepolicy_log ~., temp0,
                method = 'lasso',
                preProc = c('scale', 'center'),
                trControl = train_con
               )
-#lasso
+summary(lasso)
 ```
 
 ```{r}
@@ -761,16 +774,27 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients decreasing to zero, in this case we will remove variable "construction"
+# From the Lasso Regression models, we can discard the variables with coeeficients decreasing to zero, in this case we will remove variable "basementonly", "
 
 ```{r}
-df_num = subset(df_num,select=-c(construction)) 
+temp1 = subset(temp0,select=-c(basementonly, deductibleamountinbuildingcoverage_trans, longitude)) 
+
+fit3 = lm(totalinsurancepremiumofthepolicy_log ~ construction + 
+    deductibleamountincontentscoverage_trans + elevatedbuildingindicator + 
+    elevationdifference_trans + federalpolicyfee + latitude + 
+    numberoffloorsininsuredbuilding_log + postfirmconstructionindicator + 
+    primaryresidenceindicator + totalbuildinginsurancecoverage_trans + 
+    lowerflooronly + upperandlowerfloors + basementandabove + 
+    morethan1floor + floodzone_highrisk + occupancytype_single + 
+    occupancytype_2or4 + occupancytype_4more,
+    data = temp1)
+summary(fit3)
 #View(df_num)
 ```
 
 ```{r}
 for (col in c('lowerflooronly', 'elevatedbuildingindicator', 'numberoffloorsininsuredbuilding', 'postfirmconstructionindicator', 'primaryresidenceindicator', 'upperandlowerfloors', 'basementandabove','morethan1floor')) {
-  plot <- ggplot(data = df_num,
+  plot <- ggplot(data = temp1,
                  aes_string(x = col, y = 'totalinsurancepremiumofthepolicy', group = col, fill = col)) + 
             geom_boxplot(show.legend = FALSE) + 
             ggtitle(glue::glue("Boxplot of Total Insurance Premium per {col}"))
@@ -781,7 +805,7 @@ for (col in c('lowerflooronly', 'elevatedbuildingindicator', 'numberoffloorsinin
 
 ```{r}
 # Examine correlation between all numeric variables 
-cormat <-cor(df_num, use = "pairwise.complete.obs")
+cormat <-cor(temp1, use = "pairwise.complete.obs")
 ```
 
 
@@ -798,8 +822,7 @@ dev.off ()
 # Exporting the dataframe to Modeling folder
 
 # df_num includes only numeric variables for analysis
-file_path4 <- "../04_Modeling/df_num_impute0.parquet"
-write_parquet(df_num, file_path4)
-
+file_path0 <- "../04_Modeling/df_num_impute0_Final_FeatureSel.parquet"
+write_parquet(temp1, file_path0)
 ```
 
