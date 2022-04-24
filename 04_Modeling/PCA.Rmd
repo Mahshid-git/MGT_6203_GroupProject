@@ -9,23 +9,218 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## This part will consider if we can use PCA to reduce the dimension to decrease running time without affecting to the efficiency of the regression model
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+```{r}
+# Remove previous data from environment
+rm(list = ls())
 ```
 
-## Including Plots
+```{r include=FALSE}
+library(arrow) # needed to read parquet file
 
-You can also embed plots, for example:
+library(dplyr)
+library(car)
+library(caret)
+library(ggplot2)
+library(corrplot)
+library(tidyverse)
+library(rsample)
+library(randomForest)
+library(janitor)
+library(glmnet)
+library(tree)
+library(RColorBrewer)
+library(gridExtra)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+library(stats)  # for prcomp()
+library(DAAG)
+library(GGally)
+library(devtools)
+require(ggbiplot)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-testtt
+
+
+```{r}
+file_path <- "../03_EDA/df_final_0impute_5zipcode.parquet"
+df1 <- read_parquet(file_path, as_tibble = TRUE)
+#View(df1)
+```
+
+
+## Scale all numerical variables, remove reportedzipcode as we concetrated in 5 top zipcode and thus zipcode is not in need anymore. The dataset includes 293,794 rows of 23 variables and response. Noted that the  target variable is now called totalinsurancepremiumofthepolicy_log_log, as it is the log transformation of the actual variable from previous step.   
+
+```{r}
+df = scale(as.data.frame(df1[,c(2,4,5,7,8,9,10,11,14)])) # standardize all numerical variables
+
+df <- cbind(df1[,c(3,6,12,13,15,16,17,19, 20,21,22,23)],df,df1[,1]) # Add categorical columns  back in
+
+#View(df)
+```
+
+
+```{r}
+PCA <- prcomp(df[,1:21])  # apply PCA
+
+summary(PCA)
+```
+
+
+```{r}
+# Common function to display PCA related plots in 2x2 grid
+screeplot(PCA, type='l')
+dev.copy(jpeg, filename="PCA_ScreePlot.jpg")
+dev.off ()
+
+bplot = ggbiplot(PCA,
+                 choices = c(1,2),
+                 obs.scale =1, var.scale =1,
+                 circle = TRUE,
+                 ellipse = TRUE,
+                 ellipse.prob = 0.68)
+
+print(bplot)
+
+dev.copy(jpeg, filename="PCA_Plot.jpg")
+dev.off ()
+
+```
+
+
+
+# Looking at scree plot, it is observed that we can select 7PCs or 10PCs which can represents for 88% and 96% of the data 
+
+
+```{r}
+PCA_7 <- cbind(df[,22], PCA$x[,1:7])
+modelPCA <- lm(V1~.,data = as.data.frame(PCA_7)) # fit model
+summary(modelPCA) 
+
+#cross_valPCA <- cv.lm(as.data.frame(PCA_7), modelPCA, m = 5) # cross-validate 
+
+#R2_PCA <- 1 - attr(cross_valPCA,"ms")*nrow(df)/sum((df$totalinsurancepremiumofthepolicy_log - #mean(df$totalinsurancepremiumofthepolicy_log))^2) # calculate R-squared
+
+#R2_PCA  #0.392
+```
+
+```{r}
+PCA_10 <- cbind(df[,22], PCA$x[,1:10])
+modelPCA <- lm(V1~.,data = as.data.frame(PCA_10)) # fit model
+summary(modelPCA) 
+
+#cross_valPCA <- cv.lm(as.data.frame(PCA_10), modelPCA, m = 5) # cross-validate 
+
+#R2_PCA <- 1 - attr(cross_valPCA,"ms")*nrow(df)/sum((df$totalinsurancepremiumofthepolicy_log - #mean(df$totalinsurancepremiumofthepolicy_log))^2) # calculate R-squared
+
+#R2_PCA  #0.467
+```
+
+```{r}
+PCA <- as.data.frame(PCA_10)
+colnames(PCA)[1] <- "totalinsurancepremiumofthepolicy_log"
+head(PCA)
+```
+
+# Exporting the PCA dataframe to Modeling folder for seperate PCA Analysis
+
+
+```{r}
+
+file_path <- "../04_Modeling/PCA_10_data.parquet"
+write_parquet(PCA, file_path)
+```
+
+# Now we will test few models with  PCA of 10 components
+
+# Splitting data to 70% training, 30% testing of the data from PCA_10
+
+```{r}
+set.seed(100)
+
+size <- floor(0.7*nrow(PCA))
+train_ind <- sample(seq_len(nrow(PCA)), size = size)
+
+train <- PCA[train_ind, ]
+test <- PCA[-train_ind, ]
+#head(test)
+```
+
+```{r}
+xtrain = model.matrix(totalinsurancepremiumofthepolicy_log ~., train)[,-1]
+ytrain = train$totalinsurancepremiumofthepolicy_log
+xtest = model.matrix(totalinsurancepremiumofthepolicy_log ~., test)[,-1]
+ytest = test$totalinsurancepremiumofthepolicy_log
+```
+
+# Function to calculate R square and MSE
+```{r}
+
+rsquared <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
+    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((test$totalinsurancepremiumofthepolicy_log-mean(test$totalinsurancepremiumofthepolicy_log))^2))
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
+    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((train$totalinsurancepremiumofthepolicy_log-mean(train$totalinsurancepremiumofthepolicy_log))^2))
+  }
+  return (r2)
+}
+
+
+MSE <- function(pred){
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
+    mse = sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/length(test$totalinsurancepremiumofthepolicy_log)
+  }
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
+    mse = sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/length(train$totalinsurancepremiumofthepolicy_log)
+  }
+  return (mse)
+}
+```
+
+# 1. Lasso with PCA_10 components
+
+
+```{r}
+
+cv.lasso.out = cv.glmnet(xtrain, ytrain, family = "gaussian", alpha = 1, nfolds = 5, type.measure = "mse")
+bestlam.lasso = cv.lasso.out$lambda.min
+i <- which(cv.lasso.out$lambda == cv.lasso.out$lambda.min)
+mse.min.lasso <- cv.lasso.out$cvm[i]
+
+lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
+
+lasso.pred.train = predict(lasso.model, newx=xtrain)
+mse.lasso.train = MSE(lasso.pred.train)
+r2.lasso.train = rsquared(lasso.pred.train)
+r2.lasso.train 
+
+lasso.pred.test = predict(lasso.model, newx=xtest)
+mse.lasso.test = MSE(lasso.pred.test)
+r2.lasso.test = rsquared(lasso.pred.test)
+r2.lasso.test
+
+print(paste('R_squared of test data in Lasso from 10 Principle components is', r2.lasso.test))
+
+```
+
+
+#2. Random Forest with PCA_10 components
+```{r}
+rf.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = train, mtry = 3, importance = TRUE)
+
+pred.rf.train <- predict(rf.model, train)
+mse.rf.train <- MSE(pred.rf.train)
+r2.rf.train <- rsquared(pred.rf.train)
+
+rf.pred.test <- predict(rf.model, test)
+mse.rf.test <- MSE(rf.pred.test)
+r2.rf.test <- rsquared(rf.pred.test)
+print(r2.rf.test)
+```
+
+
+
