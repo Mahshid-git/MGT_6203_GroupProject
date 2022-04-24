@@ -248,24 +248,12 @@ dev.copy(jpeg, filename = "Single tree_Simple.jpg")
 dev.off ()
 
 ```
-```{r}
-install.packages("party")
-library(party)
-tree <-ctree(totalinsurancepremiumofthepolicy_log ~., train)
-print(tree)
-plot(tree)
-
-
-```
-
-
-
 
 ```{r}
-tree.model <- rpart(totalinsurancepremiumofthepolicy_log ~., data = train, method = "anova")
+tree.model <- rpart(totalinsurancepremiumofthepolicy_log ~ federalpolicyfee +floodzone_highrisk + totalbuildinginsurancecoverage_trans + elevationdifference_trans, data = train, method = "anova")
 summary(tree.model)
 
-fancyRpartPlot(tree.model, cex = 0.33)		
+fancyRpartPlot(tree.model, cex = 0.7)		
 
 dev.copy(jpeg, filename = "Regression Tree.jpg")
 dev.off ()
