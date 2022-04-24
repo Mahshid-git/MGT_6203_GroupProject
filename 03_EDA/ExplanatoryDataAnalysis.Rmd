@@ -1,8 +1,10 @@
 ---
 title: "Untitled"
-author: "MJ"
+author: "Mahshid JafarPour; Anh Tran; Warda Khan, Hossein Daneshvar"
 date: "02/04/2022"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 # This part mainly examines feature selection of the most relevant predictor variables. Different methods are used including remove multicollinearity, linear regression to remove insignificant variables, Lasso
 
@@ -583,7 +585,7 @@ df_final$basementenclosurecrawlspacetype_log <- log(df_final$basementenclosurecr
 df_final$numberoffloorsininsuredbuilding_log <- log(df_final$numberoffloorsininsuredbuilding+const+1)
 
 df_final <- subset(df_final, select = c(totalinsurancepremiumofthepolicy_log,
-                  basementenclosurecrawlspacetype_log, 
+                  #basementenclosurecrawlspacetype_log, 
                   construction, 
                   deductibleamountinbuildingcoverage_trans,
                   deductibleamountincontentscoverage_trans, 
@@ -774,7 +776,7 @@ predict(lasso$finalModel, type = "coef", mode = "fraction", s = as.numeric(lasso
 # We can further discard variables with coefficients reduced to zero
 ```
 
-# From the Lasso Regression models, we can discard the variables with coeeficients decreasing to zero, in this case we will remove variable "basementonly", "
+# From the Lasso Regression models, we can discard the variables with coefficients decreasing to zero, in this case we will remove variable "basementonly", "deductibleamountinbuildingcoverage_trans" and "longitude"
 
 ```{r}
 temp1 = subset(temp0,select=-c(basementonly, deductibleamountinbuildingcoverage_trans, longitude)) 
