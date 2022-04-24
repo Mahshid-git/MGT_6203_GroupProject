@@ -4,7 +4,7 @@ author: "Anh Tran"
 date: "4/3/2022"
 output: html_document
 ---
-# This part will involve all classification models
+# This part will involve all Linear Regression models
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -44,25 +44,23 @@ library(pls)
 
 
 ```{r}
-file_path <- "../04_Modeling/df_num_impute0.parquet"
+file_path <- "../03_EDA/df_final_0impute_5zipcode.parquet"
 df1 <- read_parquet(file_path, as_tibble = TRUE)
 #View(df1)
 ```
 
-### Note:  This file exclude 2 columns of "date" 
+
+## Scale all numerical variables, remove reportedzipcode as we concetrated in 5 top zipcode and thus zipcode is not in need anymore. The dataset includes 293,794 rows of 23 variables and response. Noted that the  target variable is now called totalinsurancepremiumofthepolicy_log_log, as it is the log transformation of the actual variable from previous step.   
 
 ```{r}
-df = as.data.frame(df1[,c(2,3,5,6,12,13,14)]) # standardize all numerical variables
+df = scale(as.data.frame(df1[,c(2,4,5,7,8,9,10,11,14)])) # standardize all numerical variables
 
-df <- cbind(df1[,c(1,4,7,8,9,10,11,16,17,18,19)],df,df1[,15]) # Add categorical columns  back in
+df <- cbind(df1[,c(3,6,12,13,15,16,17,19, 20,21,22,23)],df,df1[,1]) # Add categorical columns  back in
 
 #View(df)
 ```
 
-```{r}
-summary(df$totalinsurancepremiumofthepolicy)
-```
-
+# LINEAR REGRESSION MODELS
 
 # Splitting data to 70% training, 30% testing
 
@@ -76,38 +74,150 @@ train <- df[train_ind, ]
 test <- df[-train_ind, ]
 ```
 
-#1. Linear Regression: Ridge and Lasso
-
+# Function to calculate R square and MSE
 ```{r}
+
 rsquared <- function(pred){
-  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
-    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy-pred)^2)/sum((test$totalinsurancepremiumofthepolicy-mean(test$totalinsurancepremiumofthepolicy))^2))
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
+    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((test$totalinsurancepremiumofthepolicy_log-mean(test$totalinsurancepremiumofthepolicy_log))^2))
   }
-  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
-    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy-pred)^2)/sum((train$totalinsurancepremiumofthepolicy-mean(train$totalinsurancepremiumofthepolicy))^2))
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
+    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((train$totalinsurancepremiumofthepolicy_log-mean(train$totalinsurancepremiumofthepolicy_log))^2))
   }
   return (r2)
 }
 
 
 MSE <- function(pred){
-  if (length(pred)==length(test$totalinsurancepremiumofthepolicy)){
-    mse = sum((test$totalinsurancepremiumofthepolicy-pred)^2)/length(test$totalinsurancepremiumofthepolicy)
+  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
+    mse = sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/length(test$totalinsurancepremiumofthepolicy_log)
   }
-  if (length(pred)==length(train$totalinsurancepremiumofthepolicy)){
-    mse = sum((train$totalinsurancepremiumofthepolicy-pred)^2)/length(train$totalinsurancepremiumofthepolicy)
+  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
+    mse = sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/length(train$totalinsurancepremiumofthepolicy_log)
   }
   return (mse)
 }
 ```
+ 
+# LINEAR STEPWISE REGRESSION: forward, backward and both directions
+
+ # 1. FORWARD DIRECTION
+ 
+```{r}
+linear.fwd <- step(lm(totalinsurancepremiumofthepolicy_log ~., data = train), direction = c("forward"))
+
+fwd.pred.train = predict(linear.fwd, train)
+mse.fwd.train = MSE(fwd.pred.train)
+r2.fwd.train = rsquared(fwd.pred.train)
+
+fwd.pred.test = predict(linear.fwd, test)
+mse.fwd.test = MSE(fwd.pred.test)
+r2.fwd.test = rsquared(fwd.pred.test)
+
+print(paste('R_squared of test data in Forward Selection is', r2.fwd.test))
+```
+ 
+ # 2. BACKWARD DIRECTION
+ 
+```{r}
+linear.bck <- step(lm(totalinsurancepremiumofthepolicy_log ~., data = train), direction = c("backward"))
+
+bck.pred.train = predict(linear.bck, train)
+mse.bck.train = MSE(bck.pred.train)
+r2.bck.train = rsquared(bck.pred.train)
+
+bck.pred.test = predict(linear.bck, test)
+mse.bck.test = MSE(bck.pred.test)
+r2.bck.test = rsquared(bck.pred.test)
+
+print(paste('R_squared of test data in Forward Selection is', r2.bck.test))
+```
+ 
+ #3. BOTH DIRECTION
+ 
+```{r}
+linear.both <-lm(totalinsurancepremiumofthepolicy_log ~., data = train)
+
+step(linear.both, scope = list(lower = formula(lm(totalinsurancepremiumofthepolicy_log~1, data = train)), 
+                              upper = formula(lm(totalinsurancepremiumofthepolicy_log~., data = train))), direction =  "both")
+
+both.pred.train = predict(linear.both, train)
+mse.both.train = MSE(both.pred.train)
+r2.both.train = rsquared(both.pred.train)
+
+both.pred.test = predict(linear.both, test)
+mse.both.test = MSE(both.pred.test)
+r2.both.test = rsquared(both.pred.test)
+
+print(paste('R_squared of test data in Both Selection is', r2.both.test))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#1. Linear Regression: Ridge and Lasso
+
+
+
+
+
+
+
+
+
+
+
 
 ## 1. Ridge
 ```{r}
-xtrain = model.matrix(totalinsurancepremiumofthepolicy ~.,train)[,-1]
-ytrain = train$totalinsurancepremiumofthepolicy
-xtest = model.matrix(totalinsurancepremiumofthepolicy ~.,test)[,-1]
-ytest = test$totalinsurancepremiumofthepolicy
+xtrain = model.matrix(totalinsurancepremiumofthepolicy_log ~.,train)[,-1]
+ytrain = train$totalinsurancepremiumofthepolicy_log
+
+xtest = model.matrix(totalinsurancepremiumofthepolicy_log ~.,test)[,-1]
+ytest = test$totalinsurancepremiumofthepolicy_log
 ```
+
+
+
+```{r}
+linear.fwd <- step(lm(totalinsurancepremiumofthepolicy_log ~., data= train), direction = c("forward"))
+
+fwd.pred.train = predict(linear.fwd, med.train)
+mse.fwd.train = MSE(fwd.pred.train)
+r2.fwd.train = rsquared(fwd.pred.train)
+
+fwd.pred.test = predict(linear.fwd, med.test)
+mse.fwd.test = MSE(fwd.pred.test)
+r2.fwd.test = rsquared(fwd.pred.test)
+
+summary(linear.fwd)
+```
+
+
+
+
+
+
+
+
 
 ```{r}
 grid = 10^seq(10, -2, length = 100)
@@ -201,14 +311,14 @@ write.csv(coef.compare,"../04_Modeling/Ridge_Lasso_Lambda", row.names = FALSE)
 ```
 
 ```{r}
-plot1 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy, y = ridge.pred.test)) +
+plot1 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy_log, y = ridge.pred.test)) +
   geom_point(color = "red") +
   geom_abline(slope = 1) +
   xlab("Predicted Insurance Premium") +
   ylab("Actual Insurance Premium") +
   labs(title = "Ridge Regression")
 
-plot2 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy, y = lasso.pred.test)) +
+plot2 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy_log, y = lasso.pred.test)) +
   geom_point(color = "blue") +
   geom_abline(slope = 1) +
   xlab("Predicted Insurance Premium") +
@@ -222,11 +332,14 @@ dev.off ()
 ```
 
 
-# Bagging or random forest (can not run due to memory limit)
+
+
+
+# Bagging 
 ```{r}
 set.seed(100)
 
-bag.model <- randomForest(totalinsurancepremiumofthepolicy ~., data = train, mtry = 5, importance = TRUE)
+bag.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = train, mtry = 5, importance = TRUE)
 
 pred.bag.train <- predict(bag.model, train)
 mse.bag.train <- MSE(pred.bag.train)
@@ -239,40 +352,7 @@ r2.bag.test <- rsquared(pred.bag.test)
 
 
 
-# Boosting
-```{r}
-library(gbm)
-set.seed(100)
-boost.model <- gbm(totalinsurancepremiumofthepolicy ~., data = train, distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
 
-pred.boost.train <- predict(boost.model, train)
-```
-
-```{r}
-mse.boost.train <- MSE(pred.boost.train)
-r2.boost.train <- rsquared(pred.boost.train)
-
-pred.boost.test <- predict(boost.model, test)
-```
-
-
-```{r}
-mse.boost.test <- MSE(pred.boost.test)
-r2.boost.test <- rsquared(pred.boost.test)
-```
-
-
-```{r}
-df2 <- data.frame(summary(boost.model, plotit = FALSE), row.names = NULL)
-ggplot(df, aes(x=reorder(var,rel.inf), y=rel.inf, fill=reorder(var,rel.inf))) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  labs(title = "Relative Influence of Variables in Predicting Insurance Premium") +
-  ylab("Relative Influence") +
-  xlab("") +
-  scale_fill_manual(values = colorRampPalette(brewer.pal(1,"Oranges"))(10)) +
-  theme_classic()
-```
 
 
 
@@ -290,7 +370,7 @@ require(ggbiplot)
 
 
 ```{r}
-PCA <- prcomp(train[,1:18], scale = TRUE)  # apply PCA
+PCA <- prcomp(df[,1:22])  # apply PCA
 
 summary(PCA)
 ```
@@ -311,18 +391,26 @@ bplot = ggbiplot(PCA,
 
 print(bplot)
 
-#dev.copy(jpeg, filename="PCA_Plot.jpg")
-#dev.off ()
+dev.copy(jpeg, filename="PCA_Plot.jpg")
+dev.off ()
 
 ```
+```{r}
+View(df)
+PCA$x[,1:8]
+#PCA_7 <- cbind(df[,23], PCA$x[,1:8])
+#head(pd.DataFrame(PCA_7))
+```
+
+
 
 ```{r}
-PCA_4 <- cbind(df[,19], PCA$x[,1:5])
-modelPCA <- lm(V1~.,data = as.data.frame(PCA_4)) # fit model
-summary(modelPCA) # not a great adjusted R square value comparing to previous model with k-fold
+PCA_7 <- cbind(df[,23], PCA$x[,1:8])
+modelPCA <- lm(V1~.,data = as.data.frame(PCA_7)) # fit model
+summary(modelPCA) 
 
-cross_valPCA <- cv.lm(as.data.frame(PCA_4), modelPCA, m=5) # cross-validate 
-R2_PCA<- 1 - attr(cross_valPCA,"ms")*nrow(df)/sum((df$totalinsurancepremiumofthepolicy - mean(df$totalinsurancepremiumofthepolicy))^2) # calculate R-squared
+cross_valPCA <- cv.lm(as.data.frame(PCA_7), modelPCA, m=5) # cross-validate 
+R2_PCA<- 1 - attr(cross_valPCA,"ms")*nrow(df)/sum((df$totalinsurancepremiumofthepolicy_log - mean(df$totalinsurancepremiumofthepolicy_log))^2) # calculate R-squared
 R2_PCA
 ```
 
@@ -330,7 +418,28 @@ R2_PCA
 
 
 
+```{r}
+p1 <- ggplot(mapping = aes(x =test$totalinsurancepremiumofthepolicy_log, y = pred.bag.test)) +
+  geom_point(color = "#FFB5C5") +
+  geom_abline(slope = 1) +
+  xlab("Predicted Premium Price") +
+  ylab("Actual Premium Price") +
+  labs(title = "Bagging")
 
+
+
+
+p3 <- ggplot(mapping = aes(x = test$totalinsurancepremiumofthepolicy_log, y = lasso.pred.test)) +
+  geom_point(color = "steelblue4") +
+  geom_abline(slope = 1) +
+  xlab("Predicted Premium Price") +
+  ylab("Actual Premium Price") +
+  labs(title = "Lasso")
+
+
+
+grid.arrange(p1,  p3, nrow = 2)
+```
 
 
 
