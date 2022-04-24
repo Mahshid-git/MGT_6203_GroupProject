@@ -68,8 +68,6 @@ PCA <- prcomp(df[,1:21])  # apply PCA
 
 summary(PCA)
 ```
-
-
 ```{r}
 # Common function to display PCA related plots in 2x2 grid
 screeplot(PCA, type='l')
@@ -156,29 +154,15 @@ xtest = model.matrix(totalinsurancepremiumofthepolicy_log ~., test)[,-1]
 ytest = test$totalinsurancepremiumofthepolicy_log
 ```
 
-# Function to calculate R square and MSE
+# Function to calculate R square 
 ```{r}
 
-rsquared <- function(pred){
-  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
-    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((test$totalinsurancepremiumofthepolicy_log-mean(test$totalinsurancepremiumofthepolicy_log))^2))
-  }
-  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
-    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((train$totalinsurancepremiumofthepolicy_log-mean(train$totalinsurancepremiumofthepolicy_log))^2))
-  }
+R_2 <- function(pred){
+  
+  r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy_log - pred)^2)/sum((test$totalinsurancepremiumofthepolicy_log - mean(test$totalinsurancepremiumofthepolicy_log))^2))
   return (r2)
 }
 
-
-MSE <- function(pred){
-  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
-    mse = sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/length(test$totalinsurancepremiumofthepolicy_log)
-  }
-  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
-    mse = sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/length(train$totalinsurancepremiumofthepolicy_log)
-  }
-  return (mse)
-}
 ```
 
 # 1. Lasso with PCA_10 components
@@ -194,33 +178,15 @@ mse.min.lasso <- cv.lasso.out$cvm[i]
 lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
 
 lasso.pred.train = predict(lasso.model, newx=xtrain)
-mse.lasso.train = MSE(lasso.pred.train)
-r2.lasso.train = rsquared(lasso.pred.train)
-r2.lasso.train 
+
+R2.lasso.train = rsquared(lasso.pred.train)
+R2.lasso.train 
 
 lasso.pred.test = predict(lasso.model, newx=xtest)
-mse.lasso.test = MSE(lasso.pred.test)
-r2.lasso.test = rsquared(lasso.pred.test)
-r2.lasso.test
+
+R2.lasso.test = rsquared(lasso.pred.test)
+R2.lasso.test
 
 print(paste('R_squared of test data in Lasso from 10 Principle components is', r2.lasso.test))
 
 ```
-
-
-#2. Random Forest with PCA_10 components
-```{r}
-rf.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = train, mtry = 3, importance = TRUE)
-
-pred.rf.train <- predict(rf.model, train)
-mse.rf.train <- MSE(pred.rf.train)
-r2.rf.train <- rsquared(pred.rf.train)
-
-rf.pred.test <- predict(rf.model, test)
-mse.rf.test <- MSE(rf.pred.test)
-r2.rf.test <- rsquared(rf.pred.test)
-print(r2.rf.test)
-```
-
-
-
