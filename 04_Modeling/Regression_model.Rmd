@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 # Remove previous data from environment
 rm(list = ls())
+
 ```
 
 ```{r include=FALSE}
@@ -40,6 +41,7 @@ library(tree)
 library(RColorBrewer)
 library(gridExtra)
 library(pls)
+options(warn=-1)
 ```
 
 
@@ -82,29 +84,15 @@ xtest = model.matrix(totalinsurancepremiumofthepolicy_log ~., test)[,-1]
 ytest = test$totalinsurancepremiumofthepolicy_log
 ```
 
-# Function to calculate R square and MSE
+# Function to calculate R square 
 ```{r}
 
-rsquared <- function(pred){
-  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
-    r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((test$totalinsurancepremiumofthepolicy_log-mean(test$totalinsurancepremiumofthepolicy_log))^2))
-  }
-  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
-    r2 = 1 - (sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/sum((train$totalinsurancepremiumofthepolicy_log-mean(train$totalinsurancepremiumofthepolicy_log))^2))
-  }
+R_2 <- function(pred){
+  
+  r2 = 1 - (sum((test$totalinsurancepremiumofthepolicy_log - pred)^2)/sum((test$totalinsurancepremiumofthepolicy_log - mean(test$totalinsurancepremiumofthepolicy_log))^2))
   return (r2)
 }
 
-
-MSE <- function(pred){
-  if (length(pred)==length(test$totalinsurancepremiumofthepolicy_log)){
-    mse = sum((test$totalinsurancepremiumofthepolicy_log-pred)^2)/length(test$totalinsurancepremiumofthepolicy_log)
-  }
-  if (length(pred)==length(train$totalinsurancepremiumofthepolicy_log)){
-    mse = sum((train$totalinsurancepremiumofthepolicy_log-pred)^2)/length(train$totalinsurancepremiumofthepolicy_log)
-  }
-  return (mse)
-}
 ```
  
 # LINEAR STEPWISE REGRESSION: forward, backward and both directions
@@ -115,15 +103,15 @@ MSE <- function(pred){
 linear.fwd <- step(lm(totalinsurancepremiumofthepolicy_log ~., data = train), direction = c("forward"))
 
 fwd.pred.train = predict(linear.fwd, train)
-mse.fwd.train = MSE(fwd.pred.train)
-r2.fwd.train = rsquared(fwd.pred.train)
+
+r2.fwd.train = R_2(fwd.pred.train)
 
 fwd.pred.test = predict(linear.fwd, test)
-mse.fwd.test = MSE(fwd.pred.test)
-r2.fwd.test = rsquared(fwd.pred.test)
+
+r2.fwd.test = R_2(fwd.pred.test)
 
 print(paste('R_squared of test data in Forward Selection is', r2.fwd.test))
-print(mse.fwd.test)
+
 ```
  
  #2. BOTH DIRECTION
@@ -135,15 +123,15 @@ step(linear.both, scope = list(lower = formula(lm(totalinsurancepremiumofthepoli
                               upper = formula(lm(totalinsurancepremiumofthepolicy_log ~., data = train))), direction =  "both")
 
 both.pred.train = predict(linear.both, train)
-mse.both.train = MSE(both.pred.train)
-r2.both.train = rsquared(both.pred.train)
+
+r2.both.train = R_2(both.pred.train)
 
 both.pred.test = predict(linear.both, test)
-mse.both.test = MSE(both.pred.test)
-r2.both.test = rsquared(both.pred.test)
+
+r2.both.test = R_2(both.pred.test)
 
 print(paste('R_squared of test data in Both Selection is', r2.both.test))
-#print(mse.both.test)
+
 ```
 
 # PENALIZED LINEAR REGRESSION: Ridge and Lasso
@@ -161,12 +149,12 @@ mse.min.ridge <- cv.ridge.out$cvm[i]
 ridge.model = glmnet(xtrain, ytrain, alpha=0, lambda=bestlam.ridge)
 
 ridge.pred.train = predict(ridge.model, newx=xtrain)
-mse.ridge.train = MSE(ridge.pred.train)
-r2.ridge.train = rsquared(ridge.pred.train)
+
+r2.ridge.train = R_2(ridge.pred.train)
 
 ridge.pred.test = predict(ridge.model, newx=xtest)
-mse.ridge.test = MSE(ridge.pred.test)
-r2.ridge.test = rsquared(ridge.pred.test)
+
+r2.ridge.test = R_2(ridge.pred.test)
 
 print(paste('R_squared of test data in Ridge is', r2.ridge.test))
 
@@ -184,13 +172,13 @@ mse.min.lasso <- cv.lasso.out$cvm[i]
 lasso.model = glmnet(xtrain, ytrain, alpha=1, lambda=bestlam.lasso)
 
 lasso.pred.train = predict(lasso.model, newx=xtrain)
-mse.lasso.train = MSE(lasso.pred.train)
-r2.lasso.train = rsquared(lasso.pred.train)
+
+r2.lasso.train = R_2(lasso.pred.train)
 r2.lasso.train 
 
 lasso.pred.test = predict(lasso.model, newx=xtest)
-mse.lasso.test = MSE(lasso.pred.test)
-r2.lasso.test = rsquared(lasso.pred.test)
+
+r2.lasso.test = R_2(lasso.pred.test)
 r2.lasso.test
 
 print(paste('R_squared of test data in Lasso is', r2.lasso.test))
@@ -246,39 +234,45 @@ coef.compare
 
 write.csv(coef.compare,"../04_Modeling/Ridge_Lasso_Lambda", row.names = FALSE)
 ```
+
 #1.REGRESIION TREE : 
 
 ```{r}
-treet.model <- rpart(totalinsurancepremiumofthepolicy_log ~., data = train, method = "anova")
-rpart.plot(treet.model, main = "Prediction of Total Insurance Premium", extra = 101, digits = -1, yesno = 2, type = 5)
+tree.model <- rpart(totalinsurancepremiumofthepolicy_log ~., data = train, method = "anova")
+summary(tree.model)
+
+fancyRpartPlot(tree.model, cex = 0.33)		
 
 dev.copy(jpeg, filename = "Regression Tree.jpg")
 dev.off ()
 ```
 
 ```{r}
-pred.tree.train <- predict(treet.model, train)
-mse.tree.train <- MSE(pred.tree.train)
-r2.tree.train <- rsquared(pred.tree.train)
+pred.tree.train <- predict(tree.model, train)
 
-tree.pred.test <- predict(treet.model, test)
-mse.tree.test <- MSE(tree.pred.test)
-r2.tree.test <- rsquared(tree.pred.test)
+r2.tree.train <- R_2(pred.tree.train)
+
+tree.pred.test <- predict(tree.model, test)
+
+r2.tree.test <- R_2(tree.pred.test)
 print(r2.tree.test)
 ```
 
 
 #2. Random Forest 
+
 ```{r}
-rf.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = train, mtry = 3, importance = TRUE)
+rf.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = trainmtry = 3, importance = TRUE)
+plot(rf.model)
 
 pred.rf.train <- predict(rf.model, train)
-mse.rf.train <- MSE(pred.rf.train)
-r2.rf.train <- rsquared(pred.rf.train)
+
+r2.rf.train <- R_2(pred.rf.train)
 
 rf.pred.test <- predict(rf.model, test)
-mse.rf.test <- MSE(rf.pred.test)
-r2.rf.test <- rsquared(rf.pred.test)
+
+r2.rf.test <- R_2(rf.pred.test)
+
 print(r2.rf.test)
 ```
 
@@ -289,7 +283,7 @@ imp <- rownames_to_column(imp, var = "variable")
 
 ggplot(imp, aes(x = reorder(variable, X.IncMSE), y = X.IncMSE, color = reorder(variable, X.IncMSE))) +
   geom_point(show.legend=FALSE, size=3) +
-  geom_segment(aes(x=variable, xend=variable, y=0, yend = X.IncMSE), size=3, show.legend=FALSE) +
+  geom_segment(aes(x=variable, xend=variable, y=0, yend = X.IncMSE), size = 3, show.legend=FALSE) +
   xlab("") +
   ylab("% Increase in MSE") +
   labs(title = "Variable Importance for Prediction of Total Insurance Premium") +
@@ -299,6 +293,7 @@ ggplot(imp, aes(x = reorder(variable, X.IncMSE), y = X.IncMSE, color = reorder(v
 dev.copy(jpeg, filename = "Random Forest.jpg")
 dev.off ()
 ```
+
 # PLOT ALL THE MODELS
 
 
