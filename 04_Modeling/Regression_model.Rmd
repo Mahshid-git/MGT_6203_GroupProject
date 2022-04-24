@@ -238,6 +238,21 @@ write.csv(coef.compare,"../04_Modeling/Ridge_Lasso_Lambda", row.names = FALSE)
 #1.REGRESIION TREE : 
 
 ```{r}
+tree.model1 <- tree(totalinsurancepremiumofthepolicy_log ~., data = train)
+summary(tree.model1)
+
+plot(tree.model1)
+
+title('Single Tree ')
+
+```
+
+
+
+
+
+
+```{r}
 tree.model <- rpart(totalinsurancepremiumofthepolicy_log ~., data = train, method = "anova")
 summary(tree.model)
 
