@@ -247,6 +247,7 @@ dev.copy(jpeg, filename = "Regression Tree.jpg")
 dev.off ()
 ```
 
+
 ```{r}
 pred.tree.train <- predict(tree.model, train)
 
@@ -262,7 +263,7 @@ print(r2.tree.test)
 #2. Random Forest 
 
 ```{r}
-rf.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = trainmtry = 3, importance = TRUE)
+rf.model <- randomForest(totalinsurancepremiumofthepolicy_log ~., data = train, mtry = 3, importance = TRUE)
 plot(rf.model)
 
 pred.rf.train <- predict(rf.model, train)
