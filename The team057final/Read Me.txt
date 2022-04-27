@@ -1,0 +1,13 @@
+1) Final_code.ipynb
+All the codes are summarized in Final_code.ipynb
+
+2) Data
+Raw data and data saved at each stage are saved in the folders 01 to 04
+
+3) Presentation
+Final Presentation - Team 57 - Rev05.pdf
+&
+Final Presentation - Team 57 - Rev05.pptx
+
+4) Final report
+Final Project Report - Team 57.pdf
